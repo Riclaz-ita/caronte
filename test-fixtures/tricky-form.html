@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Tricky Application Form</title></head>
+<body>
+<!--
+  Every field here reproduces a real failure the review found: the
+  Greenhouse-style cover letter whose <label for> holds only the required
+  marker, two fields that share one label, an input with neither id nor name,
+  and a file input.
+-->
+<form>
+  <div>Cover letter</div>
+  <label for="q1">*</label>
+  <textarea id="q1" name="q1"></textarea>
+
+  <label for="em">Email address</label><input id="em" name="em" type="text">
+  <label for="em2">Email address</label><input id="em2" name="em2" type="text">
+
+  <label>Anything else we should know?<input type="text"></label>
+
+  <label for="src">Where did you find this role?</label><input id="src" name="src" type="text">
+
+  <label for="cv">Resume / CV</label><input id="cv" name="cv" type="file">
+</form>
+</body></html>

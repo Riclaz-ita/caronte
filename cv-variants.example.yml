@@ -1,0 +1,28 @@
+# cv-variants.example.yml — archetype to base CV.
+#
+# Copy to cv-variants.yml and point each entry at your own CV files.
+# cv-variants.yml is gitignored and never committed.
+#
+# The pipeline does not write a new CV per role. It picks the closest base CV
+# and replaces only the Professional Summary line with one written for that
+# posting. Every file referenced must exist and must contain a
+# <div class="summary-text"> for the injection to land.
+#
+# The `default` entry is required and is used for any archetype not listed.
+
+variants:
+  - archetype: Content
+    html: output/your-cv-content.html
+    notes: "Content and social framing."
+
+  - archetype: Marketing
+    html: output/your-cv-marketing.html
+    notes: "Growth and campaign framing."
+
+  - archetype: Operations
+    html: output/your-cv-operations.html
+    notes: "Coordination and process framing."
+
+  - archetype: default
+    html: output/your-cv.html
+    notes: "Generalist CV. Used for any archetype not listed above."

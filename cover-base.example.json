@@ -1,0 +1,17 @@
+{
+  "candidate": {
+    "name": "Your Name",
+    "location": "Your City, Country",
+    "email": "you@example.com",
+    "phone": "+00 000 000 0000",
+    "linkedin": "https://www.linkedin.com/in/your-profile"
+  },
+  "profile_intro": "One or two sentences on who you are and what you do. Every word must be supported by your cv.md.",
+  "achievements": [
+    {
+      "lead": "A thing you actually did",
+      "impact": "what it produced, in concrete terms a reader could check"
+    }
+  ],
+  "closing": "A closing line in your own voice."
+}

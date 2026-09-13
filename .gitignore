@@ -200,3 +200,26 @@ documents/*
 # Intake fingerprints — the recorded source filenames may themselves carry
 # PII (e.g. cv/jane-doe-master-cv.pdf). #1723
 data/intake-state.json
+candidate-brief.md
+analyses/
+PRODUCT.md
+.playwright-cli/
+cv-brand.md
+
+# -- user layer: personal files that must never be published --
+data/answer-bank.md
+data/applications.md
+data/applications.db
+data/pipeline.md
+data/apply-queue.tsv
+data/scan-history.tsv
+data/pdf-index.tsv
+data/parser-output/**/*.json
+data/cache/ats-companies/
+cv-variants.yml
+cover-base.json
+*.bak
+data/apply-queue.backup.tsv
+.apply-profile/
+output/apply/
+DESIGN.md

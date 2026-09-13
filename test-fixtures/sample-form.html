@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Sample Application Form</title></head>
+<body>
+<form>
+  <label for="fn">First name</label><input id="fn" name="fn" type="text">
+  <label for="ln">Last name</label><input id="ln" name="ln" type="text">
+  <label for="em">Email address</label><input id="em" name="em" type="email">
+  <label for="ph">Phone</label><input id="ph" name="ph" type="tel">
+  <label for="li">LinkedIn profile</label><input id="li" name="li" type="url">
+  <label for="hd">How did you hear about us?</label><textarea id="hd" name="hd"></textarea>
+
+  <label for="auth">Are you legally authorized to work in the EU?</label>
+  <select id="auth" name="auth"><option value=""></option><option>Yes</option><option>No</option></select>
+
+  <label for="spon">Will you now or in the future require sponsorship?</label>
+  <select id="spon" name="spon"><option value=""></option><option>Yes</option><option>No</option></select>
+
+  <label for="sal">What are your salary expectations?</label><input id="sal" name="sal" type="text">
+  <label for="gen">Gender identity</label><input id="gen" name="gen" type="text">
+  <label for="alb">What is your favourite album?</label><input id="alb" name="alb" type="text">
+  <label for="cv">Resume / CV</label><input id="cv" name="cv" type="file">
+
+  <fieldset>
+    <legend>Contact preference</legend>
+    <input id="contact-email" name="contact" type="radio" value="email"><label for="contact-email">Email</label>
+    <input id="contact-phone" name="contact" type="radio" value="phone"><label for="contact-phone">Phone</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Subscribe to job alerts</legend>
+    <input id="alerts" name="alerts" type="checkbox" value="yes"><label for="alerts">Yes, subscribe me</label>
+  </fieldset>
+</form>
+</body></html>
