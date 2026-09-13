@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>career-ops — pannello candidature</title>
+<title>Charon</title>
 <style>
 /* --------------------------------------------------------------------------
    Tokens
@@ -87,6 +87,13 @@ body {
   font-size: var(--t-md);
   font-weight: 640;
   letter-spacing: -0.011em;
+}
+.board-head .claim {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  border-left: 1px solid var(--rule-strong);
+  padding-left: 0.625rem;
+  margin-left: 0.125rem;
 }
 .board-head .sub {
   font-size: var(--t-sm);
@@ -511,7 +518,8 @@ footer b { color: var(--ink-soft); font-weight: 620; }
 <header class="board">
   <div class="wrap">
     <div class="board-head">
-      <h1>Pannello candidature</h1>
+      <h1>Charon</h1>
+      <span class="claim">L'ultimo passo lo fai tu</span>
       <span class="sub" id="sub">carico…</span>
       <span class="spacer"></span>
       <button class="quiet" id="restore" hidden>Ripristina</button>
