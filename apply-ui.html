@@ -92,18 +92,55 @@ body {
    non il lavoro del giorno, e aperto di default spingerebbe la plancia fuori
    dallo schermo. */
 .io { border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
+/* Un solo controllo per tutto ciò che si apre in pagina. Prima ce n'erano due,
+   con due verbi diversi per lo stesso identico gesto: il profilo diceva
+   "apri", il gruppo degli scartati diceva "mostra". */
+.disclose {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 0.4375rem;
+  font: 600 var(--t-xs)/1 var(--sans);
+  letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--ink-faint);
+  transition: color var(--dur) var(--ease);
+  white-space: nowrap;
+}
+summary:hover .disclose { color: var(--ink); }
+
+/* Il segno è fatto delle stesse righe da 1px di tutto il resto della pagina:
+   una croce che perde la gamba verticale quando il blocco è aperto. Nessun
+   glifo, nessuna icona importata, e si legge senza distinguere i colori.
+   Si muove solo la trasformazione, mai una proprietà di impaginazione. */
+.disclose-mark { position: relative; display: block; width: 0.625rem; height: 0.625rem; }
+.disclose-mark::before,
+.disclose-mark::after { content: ''; position: absolute; background: currentColor; }
+.disclose-mark::before { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-0.5px); }
+.disclose-mark::after {
+  top: 0; bottom: 0; left: 50%; width: 1px;
+  transform: translateX(-0.5px) scaleY(1);
+  transition: transform var(--dur) var(--ease);
+}
+details[open] .disclose-mark::after { transform: translateX(-0.5px) scaleY(0); }
+
+details .disclose .chiuso,
+details .disclose .aperto { display: none; }
+details:not([open]) > summary .disclose .chiuso { display: inline; }
+details[open] > summary .disclose .aperto { display: inline; }
+
+/* Il contorno di fuoco sta dentro la riga: su una fascia a tutta larghezza un
+   anello esterno disegnerebbe un rettangolo grande quanto lo schermo. */
+summary:focus-visible { outline-offset: -3px; }
+
 .io > summary {
   list-style: none; cursor: pointer;
-  padding: 0.625rem 0;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
   font-size: var(--t-sm); color: var(--ink-soft);
-  display: flex; align-items: baseline; gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  transition: color var(--dur) var(--ease);
 }
 .io > summary::-webkit-details-marker { display: none; }
 .io > summary:hover { color: var(--ink); }
 .io > summary b { font-weight: 620; color: var(--ink); }
-.io > summary .apri { margin-left: auto; font-size: var(--t-xs); }
-.io[open] > summary .apri::after { content: 'chiudi'; }
-.io:not([open]) > summary .apri::after { content: 'apri'; }
 
 /* Colonne, non griglia: una griglia allinea le righe, e "Chi sono" lasciava
    sotto di sé mezzo schermo vuoto perché la sua riga era alta quanto la
@@ -413,13 +450,6 @@ details.raw pre {
 details.group > summary { cursor: pointer; list-style: none; }
 details.group > summary::-webkit-details-marker { display: none; }
 details.group > summary .group-head { border-bottom-color: var(--rule); }
-details.group > summary .group-head::after {
-  content: "mostra"; margin-left: auto;
-  font-size: var(--t-xs); font-weight: 600; color: var(--ink-faint);
-  text-transform: uppercase; letter-spacing: 0.07em;
-}
-details.group[open] > summary .group-head::after { content: "nascondi"; }
-details.group > summary:hover .group-head::after { color: var(--ink); }
 .group-head {
   display: flex; align-items: baseline; gap: 0.625rem;
   padding-bottom: 0.5rem; margin-bottom: 0;
@@ -574,7 +604,14 @@ footer b { color: var(--ink-soft); font-weight: 620; }
 
 <section class="wrap">
   <details class="io" id="io">
-    <summary><b>Il mio profilo</b><span id="io-riga">chi sei, cosa sai fare, cosa non puoi dichiarare</span><span class="apri"></span></summary>
+    <summary>
+      <b>Il mio profilo</b>
+      <span>chi sei, cosa sai fare, cosa non puoi dichiarare</span>
+      <span class="disclose" aria-hidden="true">
+        <span class="chiuso">mostra</span><span class="aperto">nascondi</span>
+        <i class="disclose-mark"></i>
+      </span>
+    </summary>
     <div class="io-corpo" id="io-corpo">carico…</div>
   </details>
 </section>
@@ -1069,7 +1106,14 @@ function drawList() {
   // scartate in cima alla pagina sono rumore, e con un bottone ciascuna erano
   // novantuno inviti a rifare un lavoro già fatto. Resta raggiungibile, chiuso.
   $('list').innerHTML = GROUPS.filter((g) => by[g.key].length).map((g) => {
-    const head = `<div class="group-head"><h2>${esc(g.title)}</h2><span class="n">${by[g.key].length}</span></div>`;
+    // Lo stesso controllo del profilo: un gesto, un vocabolario.
+    const disclose = g.key === 'out'
+      ? `<span class="disclose" aria-hidden="true">
+           <span class="chiuso">mostra</span><span class="aperto">nascondi</span>
+           <i class="disclose-mark"></i>
+         </span>`
+      : '';
+    const head = `<div class="group-head"><h2>${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${disclose}</div>`;
     const body = by[g.key].map(rowHtml).join('');
     return g.key === 'out'
       ? `<details class="group"><summary>${head}</summary>${body}</details>`
