@@ -144,6 +144,109 @@ export function rowsFromPipeline(entries, today, takenSlugs = []) {
   });
 }
 
+/**
+ * Fold text into the one shape the focus filter compares against.
+ *
+ * Accents, case and punctuation all collapse, and the result is padded with a
+ * space at each end so a leading space is a whole word boundary.
+ */
+function normalise(text) {
+  return ` ${String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()} `;
+}
+
+/**
+ * Turn what the candidate typed into the groups the filter uses.
+ *
+ * Two separators, because a filter needs two answers. A comma adds a
+ * requirement: "part time, marketing" wants both. A pipe offers a way of
+ * meeting one: "part time | tempo parziale" wants either wording. So groups are
+ * ANDed and the alternatives inside a group are ORed, which is what makes
+ * ticking both "Part time" and "Full time" mean "either" rather than "neither".
+ */
+export function parseFocus(text) {
+  return String(text || '')
+    .split(',')
+    .map((group) => group.split('|').map((t) => normalise(t).trim()).filter(Boolean))
+    .filter((group) => group.length);
+}
+
+/**
+ * Say a parsed focus back in words, for the confirmation to show.
+ *
+ * A group with alternatives gets brackets. Without them the list flattens into
+ * "part time o tempo parziale e milano", which reads as three equal options and
+ * hides the fact that Milano is a separate requirement.
+ */
+export function describeFocus(groups) {
+  return groups
+    .map((alts) => (alts.length > 1 ? `(${alts.join(' o ')})` : alts[0]))
+    .join(' e ');
+}
+
+/**
+ * Whether one posting answers every term of the focus.
+ *
+ * `jdText` is part of the haystack when there is one: "part time" is almost
+ * never in a title, it is in the third paragraph of the description. At import
+ * time there is no description on disk yet, so the filter sees the company,
+ * the role and the location, which are what the scanner wrote into
+ * pipeline.md. A term must start a word and may run past its end: "market"
+ * catches marketing and marketer, while "intern" does not catch "external".
+ */
+export function matchesFocus(row, jdText, groups) {
+  if (!groups.length) return true;
+  const hay = normalise(`${row.role} ${row.company} ${row.location} ${jdText || ''}`);
+  return groups.every((alts) => alts.some((t) => hay.includes(` ${t}`)));
+}
+
+/**
+ * Narrow a batch of pipeline entries down to a limit, a portal at a time.
+ *
+ * Taking the first N off the list would hand back N postings from whichever
+ * board answers first: of the 270 postings the scanner had ever found, Ashby
+ * and Greenhouse accounted for 78% between them, so "give me five" meant five
+ * Ashby postings every time. This deals them round-robin instead — one per
+ * host, then round again — so five postings come from up to five boards.
+ *
+ * Order inside a host is left alone: the scanner appends what it finds, so
+ * file order is the closest thing to recency that pipeline.md carries. There
+ * is no posting date in an entry to sort on.
+ *
+ * A limit of `undefined` means no limit. A malformed URL is its own host
+ * rather than an exception: a bad line should cost its own slot, not the run.
+ */
+export function pickAcrossPortals(entries, limit) {
+  if (limit === undefined || limit === null || limit >= entries.length) return [...entries];
+  if (limit <= 0) return [];
+
+  const byHost = new Map();
+  for (const entry of entries) {
+    let host;
+    try { host = new URL(entry.url).host; } catch { host = String(entry.url); }
+    if (!byHost.has(host)) byHost.set(host, []);
+    byHost.get(host).push(entry);
+  }
+
+  const queues = [...byHost.values()];
+  const picked = [];
+  for (let round = 0; picked.length < limit; round++) {
+    let servedThisRound = false;
+    for (const queue of queues) {
+      if (round >= queue.length) continue;
+      picked.push(queue[round]);
+      servedThisRound = true;
+      if (picked.length === limit) return picked;
+    }
+    if (!servedThisRound) break;
+  }
+  return picked;
+}
+
 /** Filesystem-safe id. Mirrors jdSlug in fetch-jds.mjs; kept local so this module has no imports. */
 function slugify(text) {
   const s = String(text).toLowerCase().replace(/^https?:\/\//, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -162,16 +265,36 @@ if (isMainModule(import.meta.url)) {
     const { readFileSync } = await import('fs');
     const pipelinePath = resolve(getCareerOpsRoot(), 'data', 'pipeline.md');
     const entries = parsePipeline(readFileSync(pipelinePath, 'utf-8'));
-    // De-dupe by url first, then mint slugs against the slugs already in the
-    // queue so a repost gets its own pack directory instead of the original's.
+
+    const flag = (name) => {
+      const i = args.indexOf(name);
+      return i === -1 ? undefined : args[i + 1];
+    };
+    const rawLimit = flag('--limit');
+    const limit = rawLimit === undefined ? undefined : Math.max(0, Number(rawLimit) || 0);
+    const groups = parseFocus(flag('--focus'));
+
+    // De-dupe by url, then filter, then deal a portal at a time. Whatever is
+    // left stays `- [ ]` in pipeline.md: nothing here rewrites that file, so
+    // the remainder is the inbox the next run serves from without rescanning.
     const known = new Set(rows.map((r) => r.url));
+    const fresh = entries.filter((e) => !known.has(e.url));
+    const focused = groups.length ? fresh.filter((e) => matchesFocus(e, '', groups)) : fresh;
+    const chosen = pickAcrossPortals(focused, limit);
+
     const added = rowsFromPipeline(
-      entries.filter((e) => !known.has(e.url)),
+      chosen,
       new Date().toISOString().slice(0, 10),
       rows.map((r) => r.slug),
     );
     writeQueue(QUEUE, [...rows, ...added]);
-    console.log(`Imported ${added.length} new rows from ${pipelinePath} (${entries.length} pending, ${entries.length - added.length} already in the queue).`);
+
+    const portals = new Set(added.map((r) => { try { return new URL(r.url).host; } catch { return r.url; } }));
+    const parts = [`Imported ${added.length} new rows from ${portals.size} portals`];
+    if (groups.length) parts.push(`focus "${describeFocus(groups)}" kept ${focused.length} of ${fresh.length} fresh`);
+    if (limit !== undefined && focused.length > added.length) parts.push(`${focused.length - added.length} left pending for the next run`);
+    parts.push(`${entries.length} pending, ${entries.length - fresh.length} already in the queue`);
+    console.log(`${parts.join('; ')}.`);
   } else if (args.includes('--list')) {
     for (const r of rows) {
       console.log(`${String(r.score).padStart(4)}  ${r.pack.padEnd(10)} ${r.apply.padEnd(10)} ${r.company} — ${r.role}`);
@@ -203,7 +326,7 @@ if (isMainModule(import.meta.url)) {
     writeQueue(QUEUE, upsertRow(rows, next));
     console.log(`${slug}: ${key} = ${value}`);
   } else {
-    console.error('Usage: node apply-queue.mjs --import-pipeline | --list | --validate | --set <slug> <column>=<value>');
+    console.error('Usage: node apply-queue.mjs --import-pipeline [--limit N] [--focus "terms"] | --list | --validate | --set <slug> <column>=<value>');
     process.exit(1);
   }
 }

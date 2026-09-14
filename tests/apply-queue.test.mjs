@@ -2,7 +2,7 @@
  * apply-queue.test.mjs — tests for apply-queue.mjs
  * Run: node apply-queue.test.mjs
  */
-import { QUEUE_COLUMNS, readQueue, writeQueue, upsertRow, validateRow, validateQueue, parsePipeline, rowsFromPipeline } from '../apply-queue.mjs';
+import { QUEUE_COLUMNS, readQueue, writeQueue, upsertRow, validateRow, validateQueue, parsePipeline, rowsFromPipeline, pickAcrossPortals } from '../apply-queue.mjs';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { tmpdir } from 'os';
@@ -190,6 +190,50 @@ const lookup = (url) => execSync(
 eq('an expired URL resolves to its slug', lookup('https://jobs.ashbyhq.com/beta/2'), 'beta-ai-intern');
 eq('a URL not in the queue resolves to nothing', lookup('https://example.com/gone'), '');
 eq('the lookup matches the url column, not a substring', lookup('https://jobs.ashbyhq.com/beta/'), '');
+
+// ---------------------------------------------------------------------------
+// pickAcrossPortals — il limite della ricerca
+//
+// Fermarsi ai primi N della lista darebbe N annunci sempre dal portale che
+// risponde per primo: nei 270 trovati finora Ashby e Greenhouse da soli
+// facevano il 78%. Quindi si prende a turno un portale alla volta.
+// ---------------------------------------------------------------------------
+const e = (host, n) => ({ url: `https://${host}/job/${n}`, company: host.split('.')[0], role: `Role ${n}`, location: '' });
+const hostsOf = (picked) => picked.map((x) => new URL(x.url).host);
+
+eq('senza limite non tocca niente',
+  pickAcrossPortals([e('a.com', 1), e('a.com', 2)], undefined).length, 2);
+
+eq('cinque su tre portali pescano a turno',
+  hostsOf(pickAcrossPortals([
+    e('a.com', 1), e('a.com', 2), e('a.com', 3), e('a.com', 4),
+    e('b.com', 1), e('b.com', 2),
+    e('c.com', 1),
+  ], 5)),
+  ['a.com', 'b.com', 'c.com', 'a.com', 'b.com']);
+
+eq('cinque su tredici portali danno cinque portali distinti',
+  new Set(hostsOf(pickAcrossPortals(
+    Array.from({ length: 13 }, (_, i) => [e(`h${i}.com`, 1), e(`h${i}.com`, 2)]).flat(), 5,
+  ))).size, 5);
+
+eq('dentro un portale tiene l\'ordine in cui la scansione li ha trovati',
+  pickAcrossPortals([e('a.com', 1), e('a.com', 2), e('a.com', 3)], 2).map((x) => x.role),
+  ['Role 1', 'Role 2']);
+
+eq('un limite più grande del disponibile prende tutto',
+  pickAcrossPortals([e('a.com', 1), e('b.com', 1)], 99).length, 2);
+
+eq('un portale solo si comporta come una lista',
+  pickAcrossPortals([e('a.com', 1), e('a.com', 2), e('a.com', 3)], 2).length, 2);
+
+eq('limite zero non prende niente', pickAcrossPortals([e('a.com', 1)], 0).length, 0);
+
+eq('un url malformato non fa cadere la selezione',
+  pickAcrossPortals([{ url: 'non-un-url', company: '', role: 'X', location: '' }, e('a.com', 1)], 2).length, 2);
+
+eq('l\'ordine dei portali è quello di prima apparizione',
+  hostsOf(pickAcrossPortals([e('z.com', 1), e('a.com', 1)], 2)), ['z.com', 'a.com']);
 
 rmSync(dir, { recursive: true, force: true });
 
