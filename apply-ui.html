@@ -88,6 +88,51 @@ body {
   font-weight: 640;
   letter-spacing: -0.011em;
 }
+/* Il profilo. Sta sotto l'intestazione, chiuso: è materiale di consultazione,
+   non il lavoro del giorno, e aperto di default spingerebbe la plancia fuori
+   dallo schermo. */
+.io { border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
+.io > summary {
+  list-style: none; cursor: pointer;
+  padding: 0.625rem 0;
+  font-size: var(--t-sm); color: var(--ink-soft);
+  display: flex; align-items: baseline; gap: 0.5rem;
+}
+.io > summary::-webkit-details-marker { display: none; }
+.io > summary:hover { color: var(--ink); }
+.io > summary b { font-weight: 620; color: var(--ink); }
+.io > summary .apri { margin-left: auto; font-size: var(--t-xs); }
+.io[open] > summary .apri::after { content: 'chiudi'; }
+.io:not([open]) > summary .apri::after { content: 'apri'; }
+
+/* Colonne, non griglia: una griglia allinea le righe, e "Chi sono" lasciava
+   sotto di sé mezzo schermo vuoto perché la sua riga era alta quanto la
+   sezione più lunga. Le colonne impacchettano in verticale. */
+.io-corpo {
+  padding: 0.25rem 0 1.5rem;
+  columns: 19rem 3;
+  column-gap: 2.5rem;
+}
+.io-sez { break-inside: avoid; margin-bottom: 1.5rem; }
+.io-sez h3 {
+  margin: 0 0 0.5rem;
+  font: 500 var(--t-xs)/1 var(--sans);
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+  padding-bottom: 0.4375rem; border-bottom: 1px solid var(--rule-strong);
+}
+/* La sezione dei divieti si legge per prima, e si legge diversa: non è una
+   lista di qualità in meno, è il perimetro entro cui tutto il resto è vero. */
+.io-sez[data-peso="guardia"] h3 { color: var(--ink); border-bottom-color: var(--ink); }
+.io-sez[data-peso="guardia"] li::before { content: '✗'; }
+.io-sez p { margin: 0; font-size: var(--t-sm); line-height: 1.6; max-width: 62ch; }
+.io-sez ul { margin: 0; padding: 0; list-style: none; }
+.io-sez li {
+  font-size: var(--t-sm); line-height: 1.55;
+  padding-left: 1rem; text-indent: -1rem; margin-bottom: 0.375rem;
+}
+.io-sez li::before { content: '·'; display: inline-block; width: 1rem; text-indent: 0; color: var(--ink-soft); }
+.io-sez li b { font-weight: 620; }
+
 .board-head .claim {
   font-size: var(--t-xs);
   color: var(--ink-soft);
@@ -527,6 +572,13 @@ footer b { color: var(--ink-soft); font-weight: 620; }
   </div>
 </header>
 
+<section class="wrap">
+  <details class="io" id="io">
+    <summary><b>Il mio profilo</b><span id="io-riga">chi sei, cosa sai fare, cosa non puoi dichiarare</span><span class="apri"></span></summary>
+    <div class="io-corpo" id="io-corpo">carico…</div>
+  </details>
+</section>
+
 <main class="wrap">
   <div class="rail" id="rail" aria-label="Le quattro fasi"></div>
   <div class="act" id="act"></div>
@@ -730,6 +782,10 @@ function focusLabels() {
 let focus = '';
 try { focus = localStorage.getItem('career-ops-focus') || ''; } catch { focus = ''; }
 
+// L'aggancio sta fuori da ogni ridisegno: il blocco profilo vive nell'HTML e
+// non viene ricostruito a ogni aggiornamento della coda.
+$('io').addEventListener('toggle', () => { if ($('io').open) apriProfilo(); });
+
 function drawAct() {
   const id = selected || state.next || 'search';
   const phase = state.phases.find((p) => p.id === id);
@@ -804,6 +860,44 @@ function drawAct() {
     b.disabled = busy;
     b.addEventListener('click', () => askConfirm(b.dataset.run));
   });
+}
+
+// ---------------------------------------------------------------------------
+// Il mio profilo
+// ---------------------------------------------------------------------------
+
+/**
+ * Disegna il profilo la prima volta che lo apri.
+ *
+ * Viene dal disco, non da un modello. Riassumerlo costerebbe token e, peggio,
+ * introdurrebbe deriva proprio nella sezione dei divieti: "non programmo" è
+ * una riga che non può ammorbidirsi in "profilo tecnico di base".
+ */
+let profiloCaricato = false;
+
+async function apriProfilo() {
+  if (profiloCaricato) return;
+  profiloCaricato = true;
+  const box = $('io-corpo');
+  const { body, status } = await api('/api/profile');
+
+  if (status !== 200) {
+    profiloCaricato = false;
+    box.innerHTML = `<div class="io-sez"><p>${esc(body.error || 'Profilo non disponibile.')}</p></div>`;
+    return;
+  }
+
+  // Il grassetto di markdown è l'unica formattazione che passa: serve a marcare
+  // una parola dentro una riga, non ad aprire una porta all'HTML arbitrario.
+  const forte = (t) => esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  const guardia = (titolo) => /non posso|non puoi|manca/i.test(titolo);
+
+  box.innerHTML = body.sections.map((sez) => `
+    <div class="io-sez" data-peso="${guardia(sez.title) ? 'guardia' : 'normale'}">
+      <h3>${esc(sez.title)}</h3>
+      ${sez.prose ? `<p>${forte(sez.prose)}</p>` : ''}
+      ${sez.points.length ? `<ul>${sez.points.map((p) => `<li>${forte(p)}</li>`).join('')}</ul>` : ''}
+    </div>`).join('');
 }
 
 // ---------------------------------------------------------------------------

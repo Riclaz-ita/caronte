@@ -36,6 +36,7 @@ import {
   buildAnalysisPrompt, parseAnalysis, scoreFit, pendingAnalysis,
   saveAnalysis, loadAnalysis, analysisPath,
 } from './analyze.mjs';
+import { loadProfileCard } from './candidate-brief.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 
@@ -870,6 +871,18 @@ export function createApp() {
         const run = newRun(phase.id);
         runPhase(run, phase, { limit: body.limit, focus: body.focus });
         return json(res, 202, { runId: run.id });
+      }
+
+      // Who the candidate is, read off disk rather than summarised by a model.
+      // A summary would drift, and the section it would drift in is the one
+      // listing what he must never claim — which is the whole point of having
+      // it on screen.
+      if (req.method === 'GET' && url.pathname === '/api/profile') {
+        try {
+          return json(res, 200, { sections: loadProfileCard() });
+        } catch (err) {
+          return json(res, 404, { error: err.message });
+        }
       }
 
       if (req.method === 'GET' && url.pathname.startsWith('/api/analysis/')) {

@@ -18,6 +18,7 @@ import {
   MODEL_CWD, claudeArgs,
 } from '../apply-ui.mjs';
 import { APPLY_STATES } from '../apply-queue.mjs';
+import { parseBrief } from '../candidate-brief.mjs';
 import { readFileSync as read } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -291,6 +292,21 @@ eq('anche una riga senza testo annuncio apre il form: il modulo si compila lo st
   pickForForm([{ slug: 'a', apply: 'chosen', pack: 'jd_failed' }]).slug, 'a');
 eq('una riga scartata non apre niente', pickForForm([{ slug: 'a', apply: 'skipped', pack: 'built' }]), null);
 eq('una riga già inviata non si riapre', pickForForm([{ slug: 'a', apply: 'submitted', pack: 'built' }]), null);
+
+// -- Il profilo servito alla pagina -----------------------------------------
+//
+// Letto dal disco, non riassunto: la sezione dove un riassunto slitterebbe è
+// proprio quella dei divieti, e "non programmo" non può ammorbidirsi.
+
+const briefFinto = [
+  '## Chi sono', '', 'Laureato in economia.', '',
+  '## Cosa non posso dichiarare', '', '- Non programmo.', '',
+  '<!-- pannello -->', '## Cosa manca', '', '- Nessun portfolio.', '',
+].join('\n');
+const sezioni = parseBrief(briefFinto);
+eq('la pagina riceve ogni sezione, nell\'ordine scritto',
+  sezioni.map((x) => x.title), ['Chi sono', 'Cosa non posso dichiarare', 'Cosa manca']);
+ok('e sa quali non devono uscire dal computer', sezioni[2].panelOnly === true);
 
 // -- Chi spende, e su quale modello -----------------------------------------
 //
