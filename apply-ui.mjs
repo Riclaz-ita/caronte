@@ -30,7 +30,10 @@ import { spawn } from 'node:child_process';
 import { readFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readQueue, writeQueue } from './apply-queue.mjs';
+import {
+  readQueue, writeQueue, parsePipeline, pickAcrossPortals,
+  parseFocus, describeFocus, matchesFocus,
+} from './apply-queue.mjs';
 import { pendingTriage, loadJd } from './triage.mjs';
 import {
   buildAnalysisPrompt, parseAnalysis, scoreFit, pendingAnalysis,
@@ -39,10 +42,16 @@ import {
 import { loadProfileCard } from './candidate-brief.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
+import * as yaml from 'js-yaml';
+
+const parseYaml = yaml.load;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const QUEUE = resolve(getCareerOpsRoot(), 'data', 'apply-queue.tsv');
 const PAGE = resolve(__dirname, 'apply-ui.html');
+const PIPELINE = resolve(getCareerOpsRoot(), 'data', 'pipeline.md');
+const PORTALS = resolve(getCareerOpsRoot(), 'portals.yml');
+const HISTORY = resolve(getCareerOpsRoot(), 'data', 'scan-history.tsv');
 const MARK = resolve(__dirname, 'caronte.jpg');
 const CLAUDE_BIN = process.env.CAREER_OPS_CLAUDE_BIN || 'claude';
 
@@ -110,16 +119,28 @@ export const PHASES = [
   {
     id: 'search',
     label: 'Cerca annunci',
-    blurb: 'Scansiona i portali configurati, importa i nuovi annunci in coda e scarica le job description dalle API pubbliche.',
+    blurb: 'Cerca sui portali configurati e importa in coda il numero di annunci che chiedi, uno per portale a turno. Poi scarica le job description dalle API pubbliche.',
     cost: 'zero token',
     risk: 'low',
     writes: ['data/scan-history.tsv', 'data/pipeline.md', 'data/apply-queue.tsv', 'jds/'],
     reversible: true,
-    steps: [
-      { label: 'scansione portali', cmd: 'node', args: ['scan.mjs'] },
-      { label: 'importa in coda', cmd: 'node', args: ['apply-queue.mjs', '--import-pipeline'] },
-      { label: 'scarica le job description', cmd: 'node', args: ['fetch-jds.mjs', '--queue', 'data/apply-queue.tsv'] },
-    ],
+    /**
+     * The scan is the expensive step in wall-clock, and it is skipped when the
+     * inbox already holds enough: postings the last run found but did not
+     * import are still `- [ ]` in pipeline.md, so asking for one more posting
+     * costs a file read rather than a sweep of 135 boards.
+     */
+    steps: (opts) => {
+      const limit = opts.limit;
+      const importArgs = ['apply-queue.mjs', '--import-pipeline'];
+      if (limit !== undefined) importArgs.push('--limit', String(limit));
+      if (opts.focus) importArgs.push('--focus', String(opts.focus));
+      const steps = [];
+      if (!inboxCovers(limit, opts.focus)) steps.push({ label: 'cerca sui portali', cmd: 'node', args: ['scan.mjs'] });
+      steps.push({ label: 'importa in coda', cmd: 'node', args: importArgs });
+      steps.push({ label: 'scarica le job description', cmd: 'node', args: ['fetch-jds.mjs', '--queue', 'data/apply-queue.tsv'] });
+      return steps;
+    },
   },
   {
     id: 'triage',
@@ -207,92 +228,19 @@ export function applyDecision(rows, slug, decision) {
 // ---------------------------------------------------------------------------
 
 /**
- * Normalise text so "Part-Time", "part time" and "PART_TIME" are one thing.
+ * The focus filter lives in apply-queue.mjs now.
  *
- * Accents are stripped and every non-alphanumeric run becomes a single space,
- * which is what makes a typed term match a title regardless of the punctuation
- * the company used. Padding with spaces lets a caller anchor on word edges
- * without a second pass.
+ * It used to run here, over a queue that had already been written, and set
+ * every posting outside the focus to `apply: 'skipped'`. That is where the 155
+ * rows under "Fuori" came from: not one of them had ever been scored, they
+ * were a filter's leftovers kept forever. The filter now runs at import time
+ * instead, and a posting it rejects is simply not imported: it stays `- [ ]`
+ * in pipeline.md, where the next run can still reach it.
+ *
+ * Re-exported because the page and the confirmation both read the terms back
+ * to the candidate, and the tests import them from here.
  */
-function normalise(text) {
-  return ` ${String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()} `;
-}
-
-/**
- * Turn what the candidate typed into the groups the filter uses.
- *
- * Two separators, because a filter needs two answers. A comma adds a
- * requirement: "part time, marketing" wants both. A pipe offers a way of
- * meeting one: "part time | tempo parziale" wants either wording. So groups are
- * ANDed and the alternatives inside a group are ORed, which is what makes
- * ticking both "Part time" and "Full time" mean "either" rather than "neither".
- *
- * The result is an array of groups, each an array of alternatives.
- */
-export function parseFocus(text) {
-  return String(text || '')
-    .split(',')
-    .map((group) => group.split('|').map((t) => normalise(t).trim()).filter(Boolean))
-    .filter((group) => group.length);
-}
-
-/**
- * Say a parsed focus back in words, for the confirmation to show.
- *
- * A group with alternatives gets brackets. Without them the list flattens into
- * "part time o tempo parziale e milano", which reads as three equal options and
- * hides the fact that Milano is a separate requirement.
- */
-export function describeFocus(groups) {
-  return groups
-    .map((alts) => (alts.length > 1 ? `(${alts.join(' o ')})` : alts[0]))
-    .join(' e ');
-}
-
-/**
- * Whether one posting answers every term of the focus.
- *
- * The job description is part of the haystack on purpose. "Part time" is
- * almost never in a title; it is in the third paragraph of the description.
- * A title-only filter would quietly discard exactly the postings the candidate
- * asked for.
- */
-export function matchesFocus(row, jdText, groups) {
-  if (!groups.length) return true;
-  const hay = normalise(`${row.role} ${row.company} ${row.location} ${jdText || ''}`);
-  // A term must start a word, and may run past its end: "market" catches
-  // marketing and marketer, while "intern" no longer catches "external". The
-  // haystack is space-padded, so a leading space is the whole word boundary.
-  return groups.every((alts) => alts.some((t) => hay.includes(` ${t}`)));
-}
-
-/**
- * Set aside every fresh posting that falls outside the focus.
- *
- * Only untouched rows are eligible: a row the candidate already voted on, or
- * one the model already scored, keeps its state. A focus typed today must
- * never silently undo a decision made yesterday.
- *
- * Nothing is deleted — the rows become 'skipped', which the page shows under
- * "Fuori" with a button to put them back.
- */
-export function applyFocus(rows, groups, loadJd = () => '') {
-  if (!groups.length) return { rows, setAside: 0, kept: rows.length };
-  let setAside = 0;
-  let kept = 0;
-  const next = rows.map((r) => {
-    if (r.apply !== 'queued' || r.score !== '') return r;
-    if (matchesFocus(r, loadJd(r.slug), groups)) { kept += 1; return r; }
-    setAside += 1;
-    return { ...r, apply: 'skipped' };
-  });
-  return { rows: setAside ? next : rows, setAside, kept };
-}
+export { parseFocus, describeFocus, matchesFocus };
 
 // ---------------------------------------------------------------------------
 // Selettori — gli stessi che usano gli script, non una loro approssimazione
@@ -348,6 +296,104 @@ export function triageBatch(rows, limit, hasJd = () => true) {
 export function pickForForm(rows) {
   return rows.find((r) => (r.apply === 'queued' || r.apply === 'chosen')
     && (r.pack === 'built' || r.pack === 'jd_failed')) || null;
+}
+
+// ---------------------------------------------------------------------------
+// Le fonti — quali portali la ricerca interroga davvero
+// ---------------------------------------------------------------------------
+
+/** Host of a URL, or the string itself when it will not parse. */
+function hostOf(url) {
+  try { return new URL(url).host.replace(/^www\./, ''); } catch { return String(url || ''); }
+}
+
+/** Every host that has ever produced a posting, from the scan history. */
+function provenHosts() {
+  if (!existsSync(HISTORY)) return new Set();
+  const hosts = new Set();
+  for (const line of readFileSync(HISTORY, 'utf-8').split('\n')) {
+    const url = line.split('\t').find((c) => c.startsWith('http'));
+    if (url) hosts.add(hostOf(url));
+  }
+  return hosts;
+}
+
+/**
+ * The portals the search actually asks, resolved the way the scanner resolves
+ * them.
+ *
+ * Not a hand-kept list in the page: that would drift the first time a board is
+ * disabled, and a page naming a portal it no longer asks is worse than a page
+ * naming none. Each portals.yml entry goes through the scanner's own
+ * `resolveProvider`, so "which portal is this" has one answer in this project
+ * rather than two. `local-parser` is skipped because resolving must never exec
+ * a configured local command.
+ *
+ * Entries are grouped by provider because that is the portal: ninety-nine
+ * company names is a wall, "Greenhouse, 41 boards" is the shape of the thing.
+ * `unclaimed` is the number no zero-token provider claims. These are not
+ * broken: verify-pipeline counts them healthy because they carry a
+ * `scan_method: websearch` handoff. But the zero-token search does not perform
+ * that handoff, so in practice it skips them, and the page says so rather than
+ * letting the portal count imply coverage it does not have.
+ */
+export async function loadSources(portalsPath = PORTALS) {
+  const empty = { portals: [], counts: { boards: 0, companies: 0, total: 0, unclaimed: 0 }, proven: [] };
+  if (!existsSync(portalsPath)) return empty;
+
+  const cfg = parseYaml(readFileSync(portalsPath, 'utf-8')) || {};
+  const { loadProviders, resolveProvider } = await import('./providers/_registry.mjs');
+  const providers = await loadProviders(resolve(__dirname, 'providers'));
+  const proven = provenHosts();
+  const enabled = (x) => x && x.enabled !== false;
+
+  const boards = (cfg.job_boards || []).filter(enabled);
+  const companies = (cfg.tracked_companies || []).filter(enabled);
+
+  const byProvider = new Map();
+  let unclaimed = 0;
+  for (const entry of [...boards, ...companies]) {
+    const hit = resolveProvider(entry, providers, { skipIds: ['local-parser'] });
+    const id = hit && hit.provider ? hit.provider.id : null;
+    if (!id) { unclaimed += 1; continue; }
+    if (!byProvider.has(id)) byProvider.set(id, { id, entries: 0, proven: false, examples: [] });
+    const group = byProvider.get(id);
+    group.entries += 1;
+    if (group.examples.length < 3 && entry.name) group.examples.push(entry.name);
+    const host = hostOf(entry.careers_url || entry.url || '');
+    if (proven.has(host) || [...proven].some((h) => h.includes(id))) group.proven = true;
+  }
+
+  return {
+    portals: [...byProvider.values()].sort((a, b) => b.entries - a.entries || a.id.localeCompare(b.id)),
+    counts: { boards: boards.length, companies: companies.length, total: boards.length + companies.length, unclaimed },
+    proven: [...proven].sort(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Posta in arrivo — quello che la scansione ha trovato e l'import non ha preso
+// ---------------------------------------------------------------------------
+
+/**
+ * Pipeline entries the queue has never seen, optionally narrowed by a focus.
+ *
+ * These are postings a previous run found and left behind because a limit cut
+ * the batch short. They are the reason "cercami un altro annuncio" does not
+ * have to sweep every board again.
+ */
+export function inboxEntries(focus) {
+  if (!existsSync(PIPELINE)) return [];
+  const known = new Set(readQueue(QUEUE).map((r) => r.url));
+  const fresh = parsePipeline(readFileSync(PIPELINE, 'utf-8')).filter((e) => !known.has(e.url));
+  const groups = parseFocus(focus);
+  return groups.length ? fresh.filter((e) => matchesFocus(e, '', groups)) : fresh;
+}
+
+/** Whether the inbox alone can satisfy a request of this size. */
+export function inboxCovers(limit, focus) {
+  if (limit === undefined || limit === null || limit <= 0) return false;
+  return inboxEntries(focus).length >= limit;
 }
 
 // ---------------------------------------------------------------------------
@@ -438,11 +484,18 @@ export function preflight(phaseId, stats, opts = {}) {
 
   if (phaseId === 'search') {
     const groups = parseFocus(opts.focus);
-    affects = groups.length
-      ? `tutti i portali configurati, poi tiene solo gli annunci che parlano di: ${describeFocus(groups)}`
-      : 'tutti i portali configurati';
-    if (groups.length) {
-      warning = 'Gli annunci nuovi fuori dal focus finiscono in "Fuori". Quelli su cui hai già deciso non si toccano.';
+    const waiting = opts.inbox === undefined ? inboxEntries(opts.focus).length : opts.inbox;
+    const n = limit === undefined ? null : limit;
+    const quanti = n === null ? 'tutti gli annunci che trova' : n === 1 ? '1 annuncio' : `${n} annunci`;
+    const dove = groups.length
+      ? `sui portali configurati, fra quelli che parlano di: ${describeFocus(groups)}`
+      : 'sui portali configurati';
+    affects = `${quanti}, ${dove}`;
+    if (n === 0) warning = 'Hai chiesto zero annunci: non verrà importato niente.';
+    else if (n !== null && waiting >= n) {
+      warning = `${waiting} annunci sono già in posta in arrivo dalla ricerca precedente: questa non riscansiona i portali, prende da lì. Veloce e senza rete.`;
+    } else if (n === null) {
+      warning = 'Senza un numero importa tutto quello che trova, che è come si erano accumulate centinaia di righe. Scrivi quanti ne vuoi.';
     }
   } else if (phaseId === 'triage') {
     const available = stats.readyToTriage;
@@ -738,21 +791,6 @@ async function runForm(run) {
   if (r.code !== 0) throw Object.assign(new Error(`la compilazione è uscita con codice ${r.code}`), { step: r.label, output: r.output });
 }
 
-/**
- * Narrow the fresh postings down to the focus the candidate typed.
- *
- * It runs last in the search phase, after the job descriptions are on disk,
- * because the description is where a term like "part time" actually appears.
- */
-function runFocus(run, focus) {
-  const groups = parseFocus(focus);
-  if (!groups.length) return;
-  const rows = readQueue(QUEUE);
-  const { rows: next, setAside, kept } = applyFocus(rows, groups, loadJd);
-  if (setAside) writeQueue(QUEUE, next);
-  log(run, `Filtro "${describeFocus(groups)}": ${kept} annunci lo rispettano, ${setAside} finiti in Fuori.`);
-}
-
 /** Drive one phase end to end, snapshotting first and shaping any failure. */
 async function runPhase(run, phase, opts) {
   try {
@@ -764,7 +802,8 @@ async function runPhase(run, phase, opts) {
     } else if (phase.steps === 'form') {
       await runForm(run);
     } else {
-      for (const step of phase.steps) {
+      const steps = typeof phase.steps === 'function' ? phase.steps(opts) : phase.steps;
+      for (const step of steps) {
         const r = await exec(run, step);
         // fetch-jds exits non-zero only when nothing at all could be read;
         // per-posting failures are normal and must not stop the chain.
@@ -772,7 +811,7 @@ async function runPhase(run, phase, opts) {
           throw Object.assign(new Error(`"${step.label}" è uscito con codice ${r.code}`), { step: step.label, output: r.output });
         }
       }
-      if (phase.id === 'search') runFocus(run, opts.focus);
+
     }
     run.status = 'done';
   } catch (err) {
@@ -827,6 +866,7 @@ function currentState() {
   const stats = summarise(rows, jdExists, (slug) => existsSync(analysisPath(slug)));
   return {
     stats,
+    inbox: inboxEntries().length,
     next: nextPhase(stats),
     canRestore: existsSync(snapshotPath()),
     phases: PHASES.map((p) => ({ id: p.id, label: p.label, blurb: p.blurb, cost: p.cost, risk: p.risk })),
@@ -887,6 +927,16 @@ export function createApp() {
       // A summary would drift, and the section it would drift in is the one
       // listing what he must never claim — which is the whole point of having
       // it on screen.
+      // Which portals the search asks, read off portals.yml on every request
+      // so the page can never name a board the scanner no longer visits.
+      if (req.method === 'GET' && url.pathname === '/api/sources') {
+        try {
+          return json(res, 200, await loadSources());
+        } catch (err) {
+          return json(res, 500, { error: `portals.yml non si legge: ${err.message}` });
+        }
+      }
+
       if (req.method === 'GET' && url.pathname === '/api/profile') {
         try {
           return json(res, 200, { sections: loadProfileCard() });

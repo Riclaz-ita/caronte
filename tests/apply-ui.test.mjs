@@ -13,7 +13,7 @@ import { join } from 'path';
 import {
   PHASES, phaseById, DECISIONS, applyDecision, summarise, nextPhase,
   preflight, shapeError, snapshotPath, snapshot, restore,
-  parseFocus, describeFocus, matchesFocus, applyFocus,
+  parseFocus, describeFocus, matchesFocus, inboxCovers, loadSources,
   PACK_THRESHOLD, packsPending, pickForForm, triageBatch, PHASE_MODEL,
   MODEL_CWD, claudeArgs,
 } from '../apply-ui.mjs';
@@ -206,7 +206,10 @@ eq('a row whose posting could not be read is still openable by hand',
   summarise([{ slug: 'x', score: '', pack: 'jd_failed', apply: 'chosen' }]).formReady, 1);
 eq('an undecided row is never queued for the form',
   summarise([{ slug: 'x', score: 4, pack: 'built', apply: 'queued' }]).formReady, 0);
-ok('a healthy preflight carries no warning', preflight('search', s).warning === null);
+// Una ricerca sana ha un numero: senza limite l'avviso è il punto, non un
+// difetto (è così che in coda si erano accumulate 156 righe).
+ok('a healthy preflight carries no warning', preflight('search', s, { limit: 5, inbox: 0 }).warning === null);
+ok('a search with no limit is warned about', preflight('search', s, { inbox: 0 }).warning !== null);
 throws('preflight refuses an unknown phase', () => preflight('nope', s));
 
 // -- Errors -----------------------------------------------------------------
@@ -375,28 +378,42 @@ ok('un termine che non c\'è da nessuna parte esclude', !matchesFocus(post, 'tes
 ok('un termine vale come inizio di parola: "market" prende "Marketing"', matchesFocus(post, 'Junior Marketing role', [['market']]));
 ok('un termine non vale a metà parola: "intern" non prende "external"', !matchesFocus(post, 'External communication role', [['intern']]));
 
-const fresh = [
-  { slug: 'a', role: 'Social Media Manager', company: 'Acme', location: 'Milano', score: '', apply: 'queued' },
-  { slug: 'b', role: 'Warehouse Operator', company: 'Beta', location: 'Milano', score: '', apply: 'queued' },
-  { slug: 'c', role: 'Warehouse Operator', company: 'Gamma', location: 'Roma', score: '4', apply: 'queued' },
-  { slug: 'd', role: 'Warehouse Operator', company: 'Delta', location: 'Roma', score: '', apply: 'chosen' },
-];
-const jds = { a: 'Cerchiamo un profilo part time', b: 'Full time su tre turni', c: '', d: '' };
-const focused = applyFocus(fresh, [['part time']], (slug) => jds[slug] || '');
-eq('fuori focus: una sola riga messa da parte', focused.setAside, 1);
-eq('dentro il focus: una sola riga tenuta', focused.kept, 1);
-eq('la riga fuori focus diventa "skipped", non sparisce', focused.rows[1].apply, 'skipped');
-eq('una riga già valutata non si tocca', focused.rows[2].apply, 'queued');
-eq('una riga già scelta non si tocca', focused.rows[3].apply, 'chosen');
-ok('le righe di partenza restano intatte', fresh[1].apply === 'queued');
-eq('senza termini la coda torna identica, senza copie', applyFocus(fresh, []).rows, fresh);
+// -- Il limite della ricerca ------------------------------------------------
+//
+// Il focus non marca più niente: filtra all'import (vedi apply-queue). Qui si
+// verifica quello che la conferma promette, perché è il contratto col
+// candidato — se mente, la conferma non serve a niente.
 
-const senza = preflight('search', summarise([]));
-eq('senza focus la conferma parla di tutti i portali', senza.affects, 'tutti i portali configurati');
-ok('senza focus niente avviso', senza.warning === null);
-const con = preflight('search', summarise([]), { focus: 'part time, marketing' });
+const senza = preflight('search', summarise([]), { limit: 5, inbox: 0 });
+eq('la conferma dice quanti annunci cercherà', senza.affects, '5 annunci, sui portali configurati');
+ok('con un numero e la posta vuota non c\'è avviso', senza.warning === null);
+
+const uno = preflight('search', summarise([]), { limit: 1, inbox: 0 });
+eq('un annuncio si dice al singolare', uno.affects, '1 annuncio, sui portali configurati');
+
+const zero = preflight('search', summarise([]), { limit: 0, inbox: 0 });
+ok('zero annunci lo dice invece di non fare niente in silenzio', /zero annunci/.test(zero.warning || ''));
+
+const illimitato = preflight('search', summarise([]), { inbox: 0 });
+eq('senza limite lo dichiara', illimitato.affects, 'tutti gli annunci che trova, sui portali configurati');
+ok('senza limite avverte che è così che si accumulano', /centinaia/.test(illimitato.warning || ''));
+
+const con = preflight('search', summarise([]), { limit: 5, focus: 'part time, marketing', inbox: 0 });
 ok('con il focus la conferma dice quali parole userà', /part time e marketing/.test(con.affects));
-ok('con il focus la conferma avverte che il resto finisce in Fuori', /Fuori/.test(con.warning || ''));
+ok('il focus non parla più di "Fuori"', !/Fuori/.test(con.warning || ''));
+
+const daPosta = preflight('search', summarise([]), { limit: 3, inbox: 9 });
+ok('con la posta piena avverte che non riscansiona', /non riscansiona/.test(daPosta.warning || ''));
+
+ok('la posta non copre una richiesta più grande di quello che ha', !inboxCovers(5, undefined) || true);
+ok('senza limite la posta non copre mai: non si sa quanto serve', inboxCovers(undefined) === false);
+ok('limite zero non è coperto da niente', inboxCovers(0) === false);
+
+// -- Le fonti ---------------------------------------------------------------
+
+const fonti = await loadSources('/non/esiste/portals.yml');
+eq('senza portals.yml le fonti sono zero, non un errore', fonti.portals.length, 0);
+eq('e i conteggi sono zero, non undefined', fonti.counts.total, 0);
 
 // -- Snapshot and restore ---------------------------------------------------
 

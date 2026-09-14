@@ -603,6 +603,48 @@ details.group > summary .group-head { border-bottom-color: var(--rule); }
 }
 
 /* --------------------------------------------------------------------------
+   Le fonti — righe su una rotaia, come i ruoli. Niente riquadri.
+   -------------------------------------------------------------------------- */
+.fonti-say { font-size: var(--t-sm); color: var(--ink-soft); margin: 0 0 1.5rem; max-width: 72ch; }
+.fonti-say b { color: var(--ink); font-weight: 620; }
+
+.fonte {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.5rem 7.5rem;
+  gap: 0 1rem;
+  align-items: baseline;
+  padding: 0.5625rem 0.5rem 0.5625rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--t-sm);
+}
+.fonte-nome { font-weight: 600; }
+.fonte-esempi { color: var(--ink-faint); font-weight: 400; font-size: var(--t-xs); }
+.fonte-n { font: 400 var(--t-xs)/1.6 var(--mono); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+/* Come per i ruoli: la parola porta lo stato, il segno la raddoppia, il colore
+   non informa. "Mai" non è un errore, è un portale che non ha ancora risposto. */
+.fonte-esito { font-size: var(--t-xs); font-weight: 600; letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 0.375rem; }
+.fonte-esito::before { content: ""; width: 0.5rem; height: 0.5rem; border: 1.5px solid var(--ink-soft); }
+.fonte-esito[data-k="si"]::before { background: var(--ink); border-color: var(--ink); }
+.fonte-esito[data-k="no"]::before { border-radius: 50%; background: none; }
+
+.nota-fonti {
+  margin: 1.75rem 0 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-sunk);
+  border-radius: 4px;
+  font-size: var(--t-sm);
+  max-width: 72ch;
+}
+.nota-fonti b { font-weight: 640; }
+.nota-fonti + .nota-fonti { margin-top: 0.625rem; }
+
+@media (max-width: 56rem) {
+  .fonte { grid-template-columns: minmax(0, 1fr) auto; }
+  .fonte-esito { grid-column: 1 / -1; margin-top: 0.25rem; }
+}
+
+/* --------------------------------------------------------------------------
    Stati vuoti — insegnano, non constatano
    -------------------------------------------------------------------------- */
 .blank { padding: 3.5rem 0 4rem; max-width: 58ch; }
@@ -778,14 +820,25 @@ function drawRail() {
     $('confirm').innerHTML = '';
     drawRail();
     drawAct();
+    // La lista cambia con la fase: su Cerca mostra le fonti, altrove i ruoli.
+    drawList();
   }));
 }
 
 // Una frase che dice cosa succede, non il nome interno della fase.
 const SPIEGA = {
-  search: () => focusLabels().length
-    ? `Cerca sui portali e tiene solo gli annunci che parlano di: ${focusLabels().join(' + ')}. Non costa niente.`
-    : 'Cerca annunci nuovi sui portali, tutti. Non costa niente.',
+  search: () => {
+    const n = quanti === null ? 5 : quanti;
+    const dove = focusLabels().length
+      ? ` fra quelli che parlano di: ${focusLabels().join(' + ')}`
+      : '';
+    if (n === 0) return 'Con zero non importa niente. Scrivi quanti annunci vuoi cercare.';
+    const quanti_ = n === 1 ? 'un annuncio' : `${n} annunci`;
+    const posta = state.inbox >= n && n > 0
+      ? ` ${state.inbox} sono già in posta in arrivo: non riscansiona.`
+      : '';
+    return `Cerca ${quanti_}${dove}, uno per portale a turno. Non costa niente.${posta}`;
+  },
   triage: (s) => {
     const n = quanti === null ? s.readyToTriage : quanti;
     if (n === 0) return 'Con zero non valuta niente. Scrivi quanti annunci vuoi valutare.';
@@ -878,7 +931,13 @@ function drawAct() {
   const s = state.stats;
 
   const disponibili = id === 'triage' ? s.readyToTriage : s.toAnalyse;
-  const qty = (id === 'triage' || id === 'deep') && disponibili > 0
+  // Su Cerca il campo non ha tetto: quanti annunci esistano là fuori non si sa
+  // prima di cercarli, e il numero è una richiesta, non una selezione da una
+  // lista già nota. Sulle altre due il tetto è quello che c'è in coda.
+  const qty = id === 'search'
+    ? `<span class="qty"><label for="lim">quanti</label>
+       <input id="lim" type="number" min="1" value="${quanti === null ? 5 : quanti}"></span>`
+    : (id === 'triage' || id === 'deep') && disponibili > 0
     ? `<span class="qty"><label for="lim">quanti</label>
        <input id="lim" type="number" min="1" max="${Math.max(1, disponibili)}"
               value="${quanti === null ? Math.max(1, disponibili) : quanti}"></span>`
@@ -996,7 +1055,7 @@ function limitValue() {
 }
 
 async function askConfirm(phaseId) {
-  const limit = phaseId === 'triage' || phaseId === 'deep' ? limitValue() : undefined;
+  const limit = phaseId === 'search' || phaseId === 'triage' || phaseId === 'deep' ? limitValue() : undefined;
   const foc = phaseId === 'search' ? composeFocus() : undefined;
   const { body } = await api('/api/preflight', { phase: phaseId, limit, focus: foc });
   pending = { phase: phaseId, limit, focus: foc };
@@ -1130,33 +1189,42 @@ async function askRestore() {
 // ---------------------------------------------------------------------------
 
 // L'ordine è quello dell'attenzione: prima ciò che aspetta te.
+//
+// Non c'è più un gruppo "Fuori". Ci finivano tre cose diverse — quello che
+// avevi ignorato tu, quello che il filtro di ricerca aveva messo da parte, e
+// ogni annuncio con voto sotto il 3 — e delle tre solo la prima era una tua
+// decisione. Il filtro non tocca più niente (sta all'import), e un voto basso
+// ora resta in "Da decidere" col suo numero accanto: il punteggio si legge,
+// la riga non sparisce. "Ignorati" contiene solo ciò che hai ignorato tu.
 const GROUPS = [
   { key: 'decide',  title: 'Da decidere' },
   { key: 'chosen',  title: 'Scelti' },
   { key: 'waiting', title: 'Non valutati' },
-  { key: 'out',     title: 'Fuori' },
+  { key: 'skipped', title: 'Ignorati' },
 ];
 
 function bucket(r) {
-  if (r.apply === 'submitted') return 'chosen';
-  if (r.apply === 'skipped' || r.apply === 'dead' || r.pack === 'jd_failed') return 'out';
-  if (r.apply === 'chosen' || r.apply === 'partial') return 'chosen';
+  if (r.apply === 'submitted' || r.apply === 'chosen' || r.apply === 'partial') return 'chosen';
+  if (r.apply === 'skipped' || r.apply === 'dead') return 'skipped';
   if (r.score === '' || r.score === null) return 'waiting';
-  return Number(r.score) >= 3 ? 'decide' : 'out';
+  return 'decide';
 }
 
 function drawList() {
+  // La pagina Cerca serve a cercare. Gli annunci con i loro bottoni — mi
+  // candido, solo i documenti, ignoro — sono decisioni, e una decisione si
+  // prende dopo aver letto un punteggio: vivono da Valuta in poi. Qui sotto
+  // stanno le fonti, che è l'unica cosa che riguardi la ricerca.
+  if ((selected || state.next || 'search') === 'search') return drawSources();
+
   if (!state.rows.length) return drawBlank();
 
-  const by = { decide: [], chosen: [], waiting: [], out: [] };
+  const by = { decide: [], chosen: [], waiting: [], skipped: [] };
   state.rows.forEach((r) => by[bucket(r)].push(r));
 
-  // "Fuori" è un archivio, non una superficie di lavoro: novantuno righe
-  // scartate in cima alla pagina sono rumore, e con un bottone ciascuna erano
-  // novantuno inviti a rifare un lavoro già fatto. Resta raggiungibile, chiuso.
   $('list').innerHTML = GROUPS.filter((g) => by[g.key].length).map((g) => {
     // Lo stesso controllo del profilo: un gesto, un vocabolario.
-    const disclose = g.key === 'out'
+    const disclose = g.key === 'skipped'
       ? `<span class="disclose" aria-hidden="true">
            <span class="chiuso">mostra</span><span class="aperto">nascondi</span>
            <i class="disclose-mark"></i>
@@ -1164,7 +1232,7 @@ function drawList() {
       : '';
     const head = `<div class="group-head"><h2>${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${disclose}</div>`;
     const body = by[g.key].map(rowHtml).join('');
-    return g.key === 'out'
+    return g.key === 'skipped'
       ? `<details class="group"><summary>${head}</summary>${body}</details>`
       : `<section class="group">${head}${body}</section>`;
   }).join('');
@@ -1286,6 +1354,74 @@ async function apriLettura(det) {
        <p class="nota">Niente che regga su un fatto vero. La lettera qui non ha appigli.</p></div>`;
 
   box.innerHTML = `${body.sintesi ? `<p class="sintesi">${esc(body.sintesi)}</p>` : ''}${reqs}${ag}`;
+}
+
+/**
+ * La pagina Cerca: quanto c'è in casa e chi viene interrogato.
+ *
+ * L'elenco arriva da portals.yml a ogni apertura, non è scritto qui: una lista
+ * a mano nella pagina mentirebbe il primo giorno che una bacheca viene
+ * disabilitata, e una pagina che nomina un portale che non interroga più è
+ * peggio di una pagina che non ne nomina nessuno.
+ */
+let fonti = null;
+
+async function drawSources() {
+  const s = state.stats;
+  const inCoda = s.total === 0
+    ? 'In coda non c\'è niente.'
+    : `In coda ci sono <b>${s.total}</b> annunci, di cui <b>${s.readyToTriage}</b> ancora da valutare.`;
+  const posta = state.inbox > 0
+    ? ` In posta in arrivo <b>${state.inbox}</b>: li ha già trovati la ricerca precedente e la prossima li prende da lì, senza riscansionare.`
+    : '';
+
+  if (!fonti) {
+    const { body, status } = await api('/api/sources');
+    fonti = status === 200 ? body : { error: body.error || 'portals.yml non si legge' };
+  }
+
+  if (fonti.error) {
+    $('list').innerHTML = `<section class="group">
+      <div class="group-head"><h2>Le fonti</h2></div>
+      <p class="fonti-say">${inCoda}${posta}</p>
+      <div class="nota-fonti">${esc(fonti.error)}</div></section>`;
+    return;
+  }
+
+  const { portals, counts } = fonti;
+  const attivi = portals.filter((p) => p.proven).length;
+
+  const righe = portals.map((p) => `
+    <div class="fonte">
+      <span class="fonte-nome">${esc(p.id)}${p.examples.length ? ` <span class="fonte-esempi">${esc(p.examples.join(', '))}${p.entries > p.examples.length ? '…' : ''}</span>` : ''}</span>
+      <span class="fonte-n">${p.entries === 1 ? '1 bacheca' : `${p.entries} bacheche`}</span>
+      <span class="fonte-esito" data-k="${p.proven ? 'si' : 'no'}">${p.proven ? 'ha dato annunci' : 'mai finora'}</span>
+    </div>`).join('');
+
+  const orfane = counts.unclaimed > 0
+    ? `<div class="nota-fonti"><b>${counts.unclaimed} voci questa ricerca non le apre.</b>
+       Sono aziende configurate per una ricerca sul web (OpenAI, Salesforce, Twilio e altre):
+       il percorso a zero token non la fa, quindi le salta e lo scrive nel registro.
+       Non è un guasto, è un pezzo di ricerca che resta da fare a mano.
+       <code>node audit-portals.mjs</code> le nomina una per una.</div>`
+    : '';
+
+  $('list').innerHTML = `
+    <section class="group">
+      <div class="group-head"><h2>Le fonti della ricerca</h2><span class="n">${portals.length}</span></div>
+      <p class="fonti-say">${inCoda}${posta}</p>
+      <p class="fonti-say">La ricerca interroga <b>${portals.length}</b> portali, per
+        <b>${counts.total}</b> bacheche in tutto: ${counts.boards} bacheche di lavoro e
+        ${counts.companies} bacheche aziendali. Di questi portali <b>${attivi}</b> hanno
+        prodotto almeno un annuncio finora. Il limite che scrivi qui sopra pesca a turno,
+        un portale alla volta, così cinque annunci arrivano da un massimo di cinque fonti.</p>
+      ${righe}
+      ${orfane}
+      <div class="nota-fonti"><b>LinkedIn non è in questo elenco</b>, e non è una dimenticanza:
+        non ha un'API pubblica per gli annunci e il suo regolamento vieta di raccoglierli a
+        macchina. Un annuncio LinkedIn puoi sempre incollarlo a mano in
+        <code>data/pipeline.md</code>, e da lì entra in coda come tutti gli altri.</div>
+    </section>`;
 }
 
 function drawBlank() {
