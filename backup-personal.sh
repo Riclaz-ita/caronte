@@ -14,7 +14,7 @@ DEST="${CAREER_OPS_BACKUP:-$HOME/Desktop/Lavoro/career-ops-personal}"
 
 # ponytail: a plain copy list beats a manifest file nobody remembers to update.
 PATHS=(
-  cv.md cv-brand.md article-digest.md voice-dna.md portals.yml
+  cv.md cv-brand.md candidate-brief.md article-digest.md voice-dna.md portals.yml
   config/profile.yml modes/_profile.md modes/_custom.md
   data/applications.md data/pipeline.md data/scan-history.tsv
   data/apply-queue.tsv data/answer-bank.md
