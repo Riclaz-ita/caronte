@@ -3,32 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Charon</title>
+<title>Caronte</title>
 <style>
 /* --------------------------------------------------------------------------
    Tokens
 
-   Carta calda, non bianco. Si usa di giorno alla scrivania: il bianco puro
-   alla finestra stanca, il nero puro non esiste in natura. Tutti i neutri
-   sono virati sulla stessa tinta calda (hue 75) del colore d'azione.
+   La tinta viene dall'emblema: grotta di ardesia verde-azzurra, acqua che
+   illumina da sotto, legno e ossa come unico caldo. Della grotta però
+   l'interfaccia prende solo la fascia in alto: il pannello si usa di giorno
+   alla scrivania, alla finestra, e PRODUCT.md scarta due volte la dashboard
+   scura. Carta pallida virata sul verde-acqua, non bianco; inchiostro di
+   ardesia, non nero. Tutti i neutri sono virati sulla stessa tinta (hue ~200)
+   del colore d'azione.
 
-   Un solo accento, mattone bruciato, e solo per tre cose: l'azione
-   principale, la fase corrente, l'anello di focus. Mai decorazione.
+   Un solo accento, acqua profonda, e solo per tre cose: l'azione principale,
+   la fase corrente, l'anello di focus. Mai decorazione. È tenuto a L 0.44
+   perché passi il 4.5:1 sia sulla carta sia sulla sua stessa velatura: il
+   mattone bruciato di prima si fermava a 3.6:1.
    Il blocco d'errore non usa un secondo colore: usa l'inchiostro pieno e le
    parole, perché lo stato deve leggersi anche senza distinguere i colori.
    -------------------------------------------------------------------------- */
 :root {
-  --paper:        oklch(0.978 0.006 85);
-  --paper-sunk:   oklch(0.955 0.008 85);
-  --paper-raised: oklch(0.993 0.004 85);
-  --rule:         oklch(0.885 0.008 82);
-  --rule-strong:  oklch(0.800 0.010 80);
-  --ink:          oklch(0.255 0.014 75);
-  --ink-soft:     oklch(0.455 0.012 75);
-  --ink-faint:    oklch(0.605 0.010 78);
-  --accent:       oklch(0.510 0.140 40);
-  --accent-press: oklch(0.440 0.140 40);
-  --accent-wash:  oklch(0.945 0.030 55);
+  --paper:        oklch(0.977 0.006 200);
+  --paper-sunk:   oklch(0.952 0.010 200);
+  --paper-raised: oklch(0.992 0.004 200);
+  --rule:         oklch(0.882 0.013 200);
+  --rule-strong:  oklch(0.795 0.018 202);
+  --ink:          oklch(0.255 0.034 218);
+  --ink-soft:     oklch(0.455 0.028 212);
+  --ink-faint:    oklch(0.605 0.022 207);
+  --accent:       oklch(0.440 0.100 207);
+  --accent-press: oklch(0.370 0.092 209);
+  --accent-wash:  oklch(0.945 0.036 200);
+
+  /* La grotta. Vive solo nella fascia in alto, che è l'identità dell'app e
+     l'unica superficie scura della pagina. */
+  --deep:         oklch(0.228 0.046 220);
+  --deep-rule:    oklch(0.400 0.052 205);
+  --bone:         oklch(0.930 0.018 88);
+  --bone-soft:    oklch(0.748 0.022 196);
+  --glow:         oklch(0.845 0.105 191);
 
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -74,20 +88,40 @@ body {
    -------------------------------------------------------------------------- */
 .board {
   position: sticky; top: 0; z-index: 10;
-  background: var(--paper);
-  border-bottom: 1px solid var(--rule-strong);
+  background: var(--deep);
+  color: var(--bone);
+  border-bottom: 1px solid var(--deep-rule);
 }
 
 .board-head {
   display: flex; align-items: baseline; gap: 0.875rem;
-  padding: 1.125rem 0 0.875rem;
+  padding: 0.5625rem 0 0.5rem;
 }
 .board-head h1 {
   margin: 0;
   font-size: var(--t-md);
   font-weight: 640;
   letter-spacing: -0.011em;
+  color: var(--bone);
 }
+
+/* L'emblema: l'immagine intera, nelle sue proporzioni 4:5. Il nome gli sta di
+   fianco, quindi è decorativa e l'alt resta vuoto: letta ad alta voce
+   raddoppierebbe la parola "Caronte". Sorgente JPEG a 512px per un riquadro da 36:
+   resta nitida sugli schermi densi. La fascia è cresciuta di due pixel per
+   farci stare il ritratto senza tagliarlo. */
+.mark {
+  align-self: center;
+  width: 2.25rem; height: 2.8125rem;
+  object-fit: cover;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--glow) 32%, transparent), 0 1px 4px oklch(0.14 0.03 226 / 0.6);
+  margin-right: -0.125rem;
+}
+
+/* Dentro la fascia scura l'anello d'azione non si vedrebbe: lì il fuoco è la
+   luce dell'acqua. */
+.board :focus-visible { outline-color: var(--glow); }
 /* Il profilo. Sta sotto l'intestazione, chiuso: è materiale di consultazione,
    non il lavoro del giorno, e aperto di default spingerebbe la plancia fuori
    dallo schermo. */
@@ -181,14 +215,19 @@ summary:focus-visible { outline-offset: -3px; }
 
 .board-head .claim {
   font-size: var(--t-xs);
-  color: var(--ink-soft);
-  border-left: 1px solid var(--rule-strong);
+  color: var(--bone-soft);
+  border-left: 1px solid var(--deep-rule);
   padding-left: 0.625rem;
   margin-left: 0.125rem;
 }
 .board-head .sub {
   font-size: var(--t-sm);
-  color: var(--ink-faint);
+  color: var(--bone-soft);
+}
+/* "Ripristina" è l'unico bottone della fascia e resta quieto anche lì. */
+.board-head button.quiet { color: var(--bone-soft); }
+.board-head button.quiet:hover:not(:disabled) {
+  background: oklch(0.32 0.05 216); color: var(--bone);
 }
 .board-head .spacer { flex: 1; }
 
@@ -217,7 +256,7 @@ summary:focus-visible { outline-offset: -3px; }
 }
 .stage:hover { background: var(--paper-sunk); }
 .stage[data-current="yes"] { background: var(--accent-wash); }
-.stage[data-current="yes"]:hover { background: oklch(0.925 0.038 55); }
+.stage[data-current="yes"]:hover { background: oklch(0.925 0.042 200); }
 /* Quale casella comanda la barra qui sotto: una barra piena in alto, non solo
    una sfumatura, perché lo stato non può dipendere dal colore. */
 .stage[aria-pressed="true"] { box-shadow: inset 0 3px 0 0 var(--ink); }
@@ -602,7 +641,8 @@ footer b { color: var(--ink-soft); font-weight: 620; }
 <header class="board">
   <div class="wrap">
     <div class="board-head">
-      <h1>Charon</h1>
+      <img class="mark" src="/caronte.jpg" alt="" width="36" height="45">
+      <h1>Caronte</h1>
       <span class="claim">L'ultimo passo lo fai tu</span>
       <span class="sub" id="sub">carico…</span>
       <span class="spacer"></span>

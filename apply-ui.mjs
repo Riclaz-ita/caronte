@@ -43,6 +43,7 @@ import { isMainModule } from './lib/is-main-module.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const QUEUE = resolve(getCareerOpsRoot(), 'data', 'apply-queue.tsv');
 const PAGE = resolve(__dirname, 'apply-ui.html');
+const MARK = resolve(__dirname, 'caronte.jpg');
 const CLAUDE_BIN = process.env.CAREER_OPS_CLAUDE_BIN || 'claude';
 
 /**
@@ -848,6 +849,15 @@ export function createApp() {
         const html = readFileSync(PAGE, 'utf-8');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         return res.end(html);
+      }
+
+      // L'emblema. È l'unico file statico oltre alla pagina, quindi una rotta
+      // sola e nessuna cartella public. Se manca, la pagina resta leggibile:
+      // il nome sta scritto di fianco, l'immagine è decorativa.
+      if (req.method === 'GET' && url.pathname === '/caronte.jpg') {
+        if (!existsSync(MARK)) return json(res, 404, { error: 'caronte.jpg non c\'è' });
+        res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'max-age=86400' });
+        return res.end(readFileSync(MARK));
       }
 
       if (req.method === 'GET' && url.pathname === '/api/state') {
