@@ -100,11 +100,20 @@ body {
   display: inline-flex; align-items: center; gap: 0.4375rem;
   font: 600 var(--t-xs)/1 var(--sans);
   letter-spacing: 0.07em; text-transform: uppercase;
-  color: var(--ink-faint);
-  transition: color var(--dur) var(--ease);
+  padding: 0.4375rem 0.625rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent-wash);
+  color: var(--accent);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
   white-space: nowrap;
 }
-summary:hover .disclose { color: var(--ink); }
+/* Tinto a riposo, pieno sotto il dito: a riposo pieno griderebbe quanto il
+   bottone della fase, che è l'azione vera della pagina. */
+summary:hover .disclose {
+  background: var(--accent); border-color: var(--accent); color: var(--paper);
+}
+summary:active .disclose { background: var(--accent-press); border-color: var(--accent-press); }
 
 /* Il segno è fatto delle stesse righe da 1px di tutto il resto della pagina:
    una croce che perde la gamba verticale quando il blocco è aperto. Nessun
