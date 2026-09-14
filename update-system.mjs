@@ -137,6 +137,7 @@ const SYSTEM_PATHS = [
   'field-provenance.mjs',
   'apply-ui.mjs',
   'apply-ui.html',
+  'caronte.jpg',
   'apply-prep.sh',
   'backup-personal.sh',
   'cover-base.example.json',
