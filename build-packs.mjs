@@ -15,7 +15,7 @@
 import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readQueue, writeQueue, upsertRow } from './apply-queue.mjs';
+import { readQueue, updateQueue, patchRow } from './apply-queue.mjs';
 import { renderHtmlToPdf } from './generate-pdf.mjs';
 import { buildHtml as buildCoverHtml } from './generate-cover-letter.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
@@ -51,9 +51,12 @@ export function pickCvVariant(archetype, variants) {
 export function injectSummary(html, line) {
   const trimmed = String(line || '').trim();
   if (!trimmed || trimmed.toLowerCase() === 'n/a') return html;
+  // Replacement via callback: a template string would let `$&` or `$1` in the
+  // model's sentence be read as replace patterns and paste the old summary
+  // back into the new one.
   return html.replace(
     /(<div class="summary-text">)([\s\S]*?)(<\/div>)/,
-    `$1${escapeHtml(trimmed)}$3`,
+    (_m, open, _old, close) => `${open}${escapeHtml(trimmed)}${close}`,
   );
 }
 
@@ -104,8 +107,10 @@ export function buildCoverPayload(row, base) {
  * whether a CV and a letter are worth rendering.
  */
 export function selectTargets(rows, { limit, threshold = 3.5 } = {}) {
+  // 'failed' is selected again on purpose: "riprova" must retry the rows that
+  // failed, and selecting only 'pending' left them out of every later run.
   const qualifying = rows
-    .filter((r) => r.pack === 'pending' && r.score !== '' && Number(r.score) >= threshold
+    .filter((r) => (r.pack === 'pending' || r.pack === 'failed') && r.score !== '' && Number(r.score) >= threshold
       && r.apply !== 'skipped' && r.apply !== 'dead')
     .sort((a, b) => Number(b.score) - Number(a.score));
   return limit === undefined ? qualifying : qualifying.slice(0, Math.max(0, limit));
@@ -118,7 +123,7 @@ export function selectTargets(rows, { limit, threshold = 3.5 } = {}) {
  * two-line regex, so that archetype fell through to `default` and the candidate
  * mailed a generic CV while the console said ✅. A malformed entry throws now.
  */
-export function loadVariants(path = resolve(__dirname, 'cv-variants.yml')) {
+export function loadVariants(path = resolve(getCareerOpsRoot(), 'cv-variants.yml')) {
   if (!existsSync(path)) {
     throw new Error(`${path} is missing. Copy cv-variants.example.yml to cv-variants.yml and point it at your own CV files.`);
   }
@@ -145,7 +150,7 @@ function yamlValue(raw) {
 }
 
 /** Build one pack. Returns the updated row. */
-export async function buildPack(row, variants) {
+export async function buildPack(row, variants, { coverBasePath = resolve(getCareerOpsRoot(), 'cover-base.json') } = {}) {
   // Without a company and a role there is no letter to write: the opening
   // renders "I am applying for the  role at ." and the apply session's identity
   // gate has nothing to check the page against. Fail the row instead.
@@ -159,7 +164,9 @@ export async function buildPack(row, variants) {
   mkdirSync(dir, { recursive: true });
 
   const variant = pickCvVariant(row.archetype, variants);
-  const basePath = resolve(__dirname, variant.html);
+  // User files (variants, base CVs, letter data) live in the data root; only
+  // scripts and templates come from the checkout.
+  const basePath = resolve(getCareerOpsRoot(), variant.html);
   if (!existsSync(basePath)) throw new Error(`base CV missing: ${variant.html}`);
 
   const baseHtml = readFileSync(basePath, 'utf-8');
@@ -179,7 +186,7 @@ export async function buildPack(row, variants) {
   writeFileSync(cvHtmlPath, html);
   await renderHtmlToPdf(html, cvPdfPath, { format: 'a4', baseDir: dirname(basePath), htmlPath: cvHtmlPath });
 
-  const base = JSON.parse(readFileSync(resolve(__dirname, 'cover-base.json'), 'utf-8'));
+  const base = JSON.parse(readFileSync(coverBasePath, 'utf-8'));
   const coverHtml = buildCoverHtml(buildCoverPayload(row, base));
   const coverPdfPath = resolve(dir, 'cover.pdf');
   await renderHtmlToPdf(coverHtml, coverPdfPath, { format: 'a4', baseDir: __dirname });
@@ -207,15 +214,24 @@ if (isMainModule(import.meta.url)) {
     console.log('I am not lowering the threshold to reach the number. Run scan.mjs for more supply, or pass --threshold to change the bar deliberately.\n');
   }
 
+  let built = 0;
+  const failed = [];
   for (const row of targets) {
+    let pack = 'built';
     try {
-      const next = await buildPack(row, variants);
-      rows = upsertRow(rows, next);
+      await buildPack(row, variants);
+      built += 1;
       console.log(`✅ ${row.slug} → ${packDir(row.slug)}`);
     } catch (err) {
-      rows = upsertRow(rows, { ...row, pack: 'failed' });
+      pack = 'failed';
+      failed.push(row.slug);
       console.log(`❌ ${row.slug}: ${err.message}`);
     }
-    writeQueue(QUEUE, rows);
+    // Only the pack column: the candidate may have decided on this row while
+    // the PDFs rendered, and that decision must survive.
+    await updateQueue(QUEUE, (current) => patchRow(current, row.slug, { pack }));
   }
+  console.log(`\nBuilt ${built} of ${targets.length}${failed.length ? `; failed: ${failed.join(', ')}` : ''}.`);
+  // A run where nothing was built is a broken setup, not a finished phase.
+  if (built === 0) process.exit(1);
 }

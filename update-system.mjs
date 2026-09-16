@@ -102,6 +102,16 @@ function isLegacyReexec() {
 }
 
 const CANONICAL_REPO = 'https://github.com/career-ops-hq/career-ops.git';
+
+// Caronte is a fork. Its Apply pipeline and panel are not upstream files, and
+// this updater re-executes itself from upstream before applying, which would
+// drop the fork's own registration of those files. A checkout carrying the
+// marker never updates from upstream: `check` reports it and `apply` refuses.
+// Upstream is integrated by hand (git fetch upstream && git merge upstream/main)
+// on a branch where the tests decide. The marker is per-checkout on purpose:
+// the upgrade legs in upgrade-tests.mjs clone old tags, which have none.
+const FORK_MARKER = '.caronte-fork';
+const isForkCheckout = () => existsSync(join(ROOT, FORK_MARKER));
 const RAW_VERSION_URL = 'https://raw.githubusercontent.com/career-ops-hq/career-ops/main/VERSION';
 const RELEASES_API = 'https://api.github.com/repos/career-ops-hq/career-ops/releases/latest';
 
@@ -136,6 +146,8 @@ const SYSTEM_PATHS = [
   'fetch-jds.mjs',
   'field-provenance.mjs',
   'apply-ui.mjs',
+  'record-submission.mjs',
+  '.caronte-fork',
   'apply-ui.html',
   'caronte.jpg',
   'apply-prep.sh',
@@ -413,22 +425,6 @@ const SYSTEM_PATHS = [
   'MAINTAINERS.md',
   'ARCHITECTURE.md',
   'README.md',
-  'README.ar.md',
-  'README.cn.md',
-  'README.da.md',
-  'README.de.md',
-  'README.es.md',
-  'README.fr.md',
-  'README.hi.md',
-  'README.ja.md',
-  'README.ko-KR.md',
-  'README.pl.md',
-  'README.pt-BR.md',
-  'README.ru.md',
-  'README.ta.md',
-  'README.ua.md',
-  'README.zh-TW.md',
-  'README.tr.md',
   'CHANGELOG.md',
   'CODE_OF_CONDUCT.md',
   'CONTRIBUTORS.md',
@@ -1786,6 +1782,10 @@ function curlGet(url, extraArgs = []) {
 }
 
 async function check() {
+  if (isForkCheckout()) {
+    console.log(JSON.stringify({ status: 'fork', local: localVersion(), note: 'Caronte fork: upstream is merged by hand, never auto-applied' }));
+    return;
+  }
   // Respect dismiss flag
   if (existsSync(join(ROOT, '.update-dismissed'))) {
     console.log(JSON.stringify({ status: 'dismissed' }));
@@ -2099,6 +2099,15 @@ async function apply() {
   }
 
   // Check for lock
+  // After the authorization checks, so a refusal for a missing confirmation
+  // keeps its own message; before any lock, stash or branch is created.
+  if (isForkCheckout()) {
+    throw new Error(
+      `${FORK_MARKER} is present: this checkout is the Caronte fork and does not update from upstream career-ops.\n` +
+      'Integrate upstream by hand: git fetch upstream && git merge upstream/main (then run node test-all.mjs --quick).',
+    );
+  }
+
   const lockFile = join(ROOT, '.update-lock');
   if (existsSync(lockFile) && !isReexec) {
     console.error('Update already in progress (.update-lock exists). If stuck, delete it manually.');

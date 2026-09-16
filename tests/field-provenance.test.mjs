@@ -132,8 +132,8 @@ const OVERREACH_IT = [
 for (const label of OVERREACH_IT) ok(`fillable (it): ${label}`, !isNeverFill(label));
 
 const sources = {
-  profile: { full_name: 'Ada Rossi', email: 'ada.rossi@example.com', phone: '+39 000 000 0000',
-             location: 'Sesto San Giovanni (Milan), Italy', linkedin: 'https://linkedin.com/in/x' },
+  profile: { full_name: 'Ada Rossi', email: 'ada.rossi@example.com', phone: '+39 333 000 0000',
+             location: 'Bergamo (BG), Italy', linkedin: 'https://linkedin.com/in/x' },
   answerBank: { 'how did you hear about us': 'Through the company careers page.' },
 };
 

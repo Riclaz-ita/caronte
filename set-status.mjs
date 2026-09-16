@@ -95,6 +95,7 @@ import { fileURLToPath } from 'url';
 import { extractTrackerReportNumbers, resolveColumns, parseTrackerRow, normalizeTextKey } from './tracker-parse.mjs';
 import { roleFuzzyMatch } from './role-matcher.mjs';
 import { localToday } from './lib/local-today.mjs';
+import { getCareerOpsRoot } from './path-resolver.mjs';
 import {
   rebuildRow, resolveTrackerPath, writeFileAtomic, loadCanonicalStates, resolveCanonicalState,
   normalizeCompany, cell, CLI_EXIT, makeCliFailWith, acquireTrackerLockForCli,
@@ -260,7 +261,10 @@ if (!newStatus) {
 
 // ── tracker access ───────────────────────────────────────────────
 
-const APPS_FILE = resolveTrackerPath(CAREER_OPS);
+// The tracker lives in the DATA root, not next to this script: resolving it
+// from __dirname wrote a test run's status into the real tracker when
+// CAREER_OPS_ROOT pointed elsewhere. templates/states.yml stays code.
+const APPS_FILE = resolveTrackerPath(getCareerOpsRoot());
 if (!existsSync(APPS_FILE)) {
   failWith(EXIT_NOT_FOUND, 'no-tracker', `No tracker found at ${APPS_FILE}`);
 }

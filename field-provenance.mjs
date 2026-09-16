@@ -10,6 +10,7 @@
  * testable on their own, and that test is what proves the guarantee holds.
  */
 import { readFileSync, existsSync } from 'fs';
+import { load as parseYaml } from 'js-yaml';
 
 /**
  * Questions the candidate answers personally. These carry legal, contractual or
@@ -69,10 +70,13 @@ export function parseAnswerBank(text) {
 export function loadSources({ profileYml, answerBankPath }) {
   const profile = {};
   if (profileYml && existsSync(profileYml)) {
-    const text = readFileSync(profileYml, 'utf-8');
-    for (const key of ['full_name', 'email', 'phone', 'location', 'linkedin', 'github', 'portfolio_url']) {
-      const m = text.match(new RegExp(`^\\s*${key}:\\s*"?([^"\\n#]+)"?`, 'm'));
-      if (m) profile[key] = m[1].trim();
+    // A real YAML parser, not a regex: 'Ada Rossi' in single quotes used to
+    // be typed into the form with the quotes on.
+    const doc = parseYaml(readFileSync(profileYml, 'utf-8'));
+    const candidate = doc && typeof doc === 'object' ? (doc.candidate || doc) : {};
+    for (const key of ['full_name', 'first_name', 'last_name', 'email', 'phone', 'location', 'linkedin', 'github', 'portfolio_url']) {
+      const v = candidate[key];
+      if (v !== undefined && v !== null && String(v).trim()) profile[key] = String(v).trim();
     }
   }
   const answerBank = answerBankPath && existsSync(answerBankPath)
@@ -88,8 +92,10 @@ const PROFILE_RULES = [
   // whole name, then surname, then first name. Every Italian token is
   // \b-anchored so one label cannot satisfy a rule meant for another.
   [/nome e cognome|nome completo|full name|your name|^name$/i, (p) => p.full_name, 'config/profile.yml:candidate.full_name'],
-  [/\bcognome\b|last name|surname|family name/i, (p) => p.full_name?.split(' ').slice(1).join(' '), 'config/profile.yml:candidate.full_name'],
-  [/\bnome\b|first name|given name/i, (p) => p.full_name?.split(' ')[0], 'config/profile.yml:candidate.full_name'],
+  // first_name/last_name win when the profile spells them out: a compound
+  // name split at the first space puts half of it in the wrong box.
+  [/\bcognome\b|last name|surname|family name/i, (p) => p.last_name || p.full_name?.split(' ').slice(1).join(' '), 'config/profile.yml:candidate.full_name'],
+  [/\bnome\b|first name|given name/i, (p) => p.first_name || p.full_name?.split(' ')[0], 'config/profile.yml:candidate.full_name'],
   [/e.?mail/i, (p) => p.email, 'config/profile.yml:candidate.email'],
   [/phone|mobile|telefono|cellulare/i, (p) => p.phone, 'config/profile.yml:candidate.phone'],
   [/linkedin/i, (p) => p.linkedin, 'config/profile.yml:candidate.linkedin'],

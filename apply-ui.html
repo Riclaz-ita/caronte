@@ -709,6 +709,7 @@ footer b { color: var(--ink-soft); font-weight: 620; }
 
 <main class="wrap">
   <div class="rail" id="rail" aria-label="Le quattro fasi"></div>
+  <div id="setup"></div>
   <div class="act" id="act"></div>
 
   <div id="confirm"></div>
@@ -777,7 +778,7 @@ function dove(loc) {
 
 const STATE_WORD = {
   chosen: 'scelto', partial: 'solo documenti', skipped: 'ignorato',
-  submitted: 'inviato', dead: 'chiuso',
+  opened: 'form aperto', submitted: 'inviato', dead: 'chiuso',
 };
 
 async function api(path, opts) {
@@ -1054,11 +1055,12 @@ function limitValue() {
   return el ? Math.max(0, Number(el.value) || 0) : undefined;
 }
 
-async function askConfirm(phaseId) {
+async function askConfirm(phaseId, slug) {
   const limit = phaseId === 'search' || phaseId === 'triage' || phaseId === 'deep' ? limitValue() : undefined;
   const foc = phaseId === 'search' ? composeFocus() : undefined;
   const { body } = await api('/api/preflight', { phase: phaseId, limit, focus: foc });
-  pending = { phase: phaseId, limit, focus: foc };
+  pending = { phase: phaseId, limit, focus: foc, slug };
+  if (slug) body.affects = `solo ${slug}`;
   drawConfirm(body);
 }
 
@@ -1107,8 +1109,12 @@ async function go() {
     return refresh();
   }
 
-  const { body } = await api('/api/run', { phase: req.phase, limit: req.limit, focus: req.focus, confirm: true });
-  if (!body.runId) { busy = false; return refresh(); }
+  const { body, status } = await api('/api/run', { phase: req.phase, limit: req.limit, focus: req.focus, slug: req.slug, confirm: true });
+  if (!body.runId) {
+    if (status >= 400) $('fail').textContent = body.error || 'La fase non è partita.';
+    busy = false;
+    return refresh();
+  }
   watch(body.runId);
 }
 
@@ -1239,8 +1245,16 @@ function drawList() {
 
   document.querySelectorAll('[data-decide]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true;
-    await api('/api/decide', { slug: b.dataset.slug, decision: b.dataset.decide });
+    const { body, status } = await api('/api/decide', { slug: b.dataset.slug, decision: b.dataset.decide });
+    if (status !== 200) $('fail').textContent = body.error || 'La decisione non è stata registrata.';
+    else if (body.tracker && body.tracker.error) $('fail').textContent = `Segnata come inviata, ma il tracker non è stato aggiornato: ${body.tracker.error}`;
+    else if (body.tracker && body.tracker.num) $('fail').textContent = `Registrata nel tracker come #${body.tracker.num}: da lì partono follow-up e statistiche.`;
     refresh();
+  }));
+
+  // Apri il form su QUESTO annuncio, non sul primo che capita.
+  document.querySelectorAll('[data-form]').forEach((b) => b.addEventListener('click', () => {
+    askConfirm('form', b.dataset.form);
   }));
 
   document.querySelectorAll('[data-lettura]').forEach((d) => d.addEventListener('toggle', () => {
@@ -1262,12 +1276,24 @@ function azioni(r) {
   if (r.apply === 'skipped') {
     return `<button data-decide="apply" data-slug="${esc(r.slug)}">Rimetti in gioco</button>`;
   }
+  // Inviata o chiusa: nessun bottone. Non si torna indietro con un click.
+  if (r.apply === 'submitted' || r.apply === 'dead') return '';
   if (!scored) return '';
+
+  // Form aperto: l'unica domanda che resta è se l'hai mandata.
+  if (r.apply === 'opened') {
+    return `
+    <button class="primary" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>
+    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}">Non inviata</button>`;
+  }
+  const canOpen = r.apply === 'chosen' && (r.pack === 'built' || r.pack === 'jd_failed');
 
   return `
     <button class="primary" data-decide="apply" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'chosen'}">Candidati</button>
     <button data-decide="partial" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'partial'}">Solo documenti</button>
-    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'skipped'}">Ignora</button>`;
+    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'skipped'}">Ignora</button>
+    ${canOpen ? `<button data-form="${esc(r.slug)}">Apri il form</button>` : ''}
+    ${r.apply === 'chosen' || r.apply === 'partial' ? `<button class="quiet" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>` : ''}`;
 }
 
 // Quando l'annuncio è stato letto per intero, il voto da 1 a 5 lascia il posto
@@ -1448,7 +1474,24 @@ function drawSkeleton() {
 
 // ---------------------------------------------------------------------------
 
+/** Prima di iniziare: cosa manca a un'installazione nuova, e come si mette. */
+async function drawSetup() {
+  const { body } = await api('/api/doctor');
+  const box = $('setup');
+  if (!body || body.ready) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <section class="confirm" aria-labelledby="setup-h">
+      <div class="confirm-head" id="setup-h">Prima di iniziare</div>
+      <div class="confirm-body">
+        <p>Caronte non può partire finché mancano questi file. Dal terminale, nella cartella del progetto:</p>
+        <ul>${body.missing.map((m) => `<li><strong>${esc(m.path)}</strong> — ${esc(m.what)}<br><code>${esc(m.how)}</code></li>`).join('')}</ul>
+        <p>Poi ricarica la pagina.</p>
+      </div>
+    </section>`;
+}
+
 async function refresh() {
+  drawSetup();
   const { body } = await api('/api/state');
   state = body;
   if (!selected) selected = state.next || 'search';

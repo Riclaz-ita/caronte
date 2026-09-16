@@ -47,6 +47,9 @@ eq('empty line leaves html alone', injectSummary(html, ''), html);
 eq('n/a leaves html alone', injectSummary(html, 'n/a'), html);
 
 // Escaping: a summary containing markup must not break out of the div.
+const dollar = injectSummary(html, 'Saved $& and $1 for the team');
+ok('replace patterns in the line are text, not templates', dollar.includes('Saved $&amp; and $1 for the team'));
+ok('the old summary does not come back through $&', !dollar.includes('Old summary'));
 const escaped = injectSummary(html, 'Built <b>tools</b> & agents');
 ok('markup in the line is escaped', escaped.includes('&lt;b&gt;') && escaped.includes('&amp;'));
 
@@ -105,6 +108,11 @@ ok('n/a never leaks into the letter', !JSON.stringify(bare).includes('n/a'));
 // Inline fixture, not a real output/*.html file: those are the candidate's own
 // files and may gain or lose the slot independently of this test.
 const fixturesDir = mkdtempSync(join(tmpdir(), 'build-packs-test-'));
+// Synthetic letter data: the real cover-base.json is the candidate's own and
+// is absent on a fresh clone, where this suite must still pass.
+const coverBasePath = join(fixturesDir, 'cover-base.json');
+writeFileSync(coverBasePath, JSON.stringify(base));
+const packOpts = { coverBasePath };
 const noSlotPath = join(fixturesDir, 'no-slot.html');
 writeFileSync(noSlotPath, '<html><body><div class="section"><div class="section-title">Professional Summary</div>' +
   '<div class="not-the-slot">Generic text.</div></div></body></html>');
@@ -112,10 +120,7 @@ const noSlotVariants = [{ archetype: 'NoSlot', html: noSlotPath }];
 
 let usableThrew = null;
 try {
-  await buildPack(
-    { slug: 'fixture-no-slot-usable', company: 'Acme', role: 'AI Intern', archetype: 'NoSlot', summary_line: 'Ships automations by directing AI coding agents.' },
-    noSlotVariants,
-  );
+  await buildPack({ slug: 'fixture-no-slot-usable', company: 'Acme', role: 'AI Intern', archetype: 'NoSlot', summary_line: 'Ships automations by directing AI coding agents.' }, noSlotVariants, packOpts);
 } catch (err) { usableThrew = err; }
 ok('buildPack throws when a usable summary meets a CV with no slot', usableThrew instanceof Error);
 ok('the thrown message names the offending file', !!usableThrew && usableThrew.message.includes(noSlotPath));
@@ -123,7 +128,7 @@ rmSync(packDir('fixture-no-slot-usable'), { recursive: true, force: true });
 
 let naThrew = null;
 try {
-  await buildPack({ slug: 'fixture-no-slot-na', company: 'Acme', role: 'AI Intern', archetype: 'NoSlot', summary_line: 'n/a' }, noSlotVariants);
+  await buildPack({ slug: 'fixture-no-slot-na', company: 'Acme', role: 'AI Intern', archetype: 'NoSlot', summary_line: 'n/a' }, noSlotVariants, packOpts);
 } catch (err) { naThrew = err; }
 ok('buildPack does not throw when the summary is n/a, even with no slot', naThrew === null);
 rmSync(packDir('fixture-no-slot-na'), { recursive: true, force: true });

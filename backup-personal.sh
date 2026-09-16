@@ -19,7 +19,8 @@ PATHS=(
   data/applications.md data/pipeline.md data/scan-history.tsv
   data/apply-queue.tsv data/answer-bank.md
   cover-base.json cv-variants.yml PRODUCT.md
-  reports interview-prep writing-samples jds
+  reports interview-prep writing-samples jds analyses
+  data/status-log.tsv data/follow-ups.md data/contacts.tsv data/blacklist.md
 )
 for p in "${PATHS[@]}"; do
   [ -e "$p" ] || continue

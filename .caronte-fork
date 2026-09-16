@@ -1,0 +1,1 @@
+This checkout is the Caronte fork of career-ops. update-system.mjs refuses to apply upstream over it; merge upstream with git instead.

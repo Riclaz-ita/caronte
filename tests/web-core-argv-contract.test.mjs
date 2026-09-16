@@ -14,7 +14,7 @@
 // real script.
 import { pass, fail, ROOT, NODE, rmSync, walkFiles } from './helpers.mjs';
 import { spawnSync } from 'child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, relative, sep } from 'path';
 
@@ -86,8 +86,11 @@ const CALL_SITES = [
   },
 ];
 
+// web/ is optional in a checkout (the Caronte branch ships without it): no
+// web sources, nothing to contract.
 const sandbox = mkdtempSync(join(tmpdir(), 'co-web-argv-'));
 try {
+  if (!existsSync(join(ROOT, 'web', 'src'))) throw Object.assign(new Error('web/ absent'), { skip: true });
   // A minimal data root: one Applied row, enough for every script here to have
   // something to report on. Fictional company and role.
   const tracker = join(sandbox, 'data', 'applications.md');
@@ -183,6 +186,9 @@ try {
   const stale = [...listed].filter((f) => !spawners.includes(f));
   if (stale.length === 0) pass('no stale entries — every listed source still spawns a core script');
   else fail(`listed sources that no longer spawn a core script: ${stale.join(', ')}`);
+} catch (err) {
+  if (!err.skip) throw err;
+  pass('web/ is not part of this checkout: contract skipped');
 } finally {
   rmSync(sandbox, { recursive: true, force: true });
 }

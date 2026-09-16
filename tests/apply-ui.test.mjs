@@ -65,7 +65,7 @@ eq('the deep read touches its own folder and nothing else',
 
 // -- Decisions --------------------------------------------------------------
 
-eq('three decisions, matching the buttons', Object.keys(DECISIONS), ['apply', 'partial', 'skip']);
+eq('four decisions, matching the buttons', Object.keys(DECISIONS), ['apply', 'partial', 'skip', 'sent']);
 ok('every decision maps to a state the queue accepts',
   Object.values(DECISIONS).every((d) => APPLY_STATES.includes(d.state)));
 eq('"solo documenti" is its own state, not a synonym for queued', DECISIONS.partial.state, 'partial');
@@ -90,6 +90,15 @@ ok('a real decision does not mutate the input', (() => {
 })());
 throws('an unknown decision throws instead of silently doing nothing', () => applyDecision(rows, 'a', 'maybe'));
 throws('an unknown slug throws', () => applyDecision(rows, 'zzz', 'apply'));
+// -- transitions: what went out cannot be un-sent by a click --
+const sent = [{ slug: 's', apply: 'submitted', pack: 'built', score: 4 }, { slug: 'o', apply: 'opened', pack: 'built', score: 4 }];
+throws('a submitted row cannot be skipped', () => applyDecision(sent, 's', 'skip'));
+throws('a submitted row cannot be re-chosen', () => applyDecision(sent, 's', 'apply'));
+throws('a queued row cannot be marked sent: nobody decided on it', () => applyDecision(rows, 'a', 'sent'));
+eq('an opened row can be marked sent', applyDecision(sent, 'o', 'sent').rows[1].apply, 'submitted');
+eq('a chosen row can be marked sent', applyDecision(rows, 'c', 'sent').rows[2].apply, 'submitted');
+eq('an opened row can be skipped (not sent after all)', applyDecision(sent, 'o', 'skip').rows[1].apply, 'skipped');
+throws('a dead posting cannot be chosen', () => applyDecision([{ slug: 'd', apply: 'dead', pack: 'built' }], 'd', 'apply'));
 
 // -- Summary ----------------------------------------------------------------
 
@@ -295,6 +304,12 @@ eq('anche una riga senza testo annuncio apre il form: il modulo si compila lo st
   pickForForm([{ slug: 'a', apply: 'chosen', pack: 'jd_failed' }]).slug, 'a');
 eq('una riga scartata non apre niente', pickForForm([{ slug: 'a', apply: 'skipped', pack: 'built' }]), null);
 eq('una riga già inviata non si riapre', pickForForm([{ slug: 'a', apply: 'submitted', pack: 'built' }]), null);
+eq('una riga in coda ma non scelta non apre niente: decidere spetta al candidato',
+  pickForForm([{ slug: 'a', apply: 'queued', pack: 'built' }]), null);
+eq('lo slug scelto vince sulla prima riga pronta',
+  pickForForm([{ slug: 'a', apply: 'chosen', pack: 'built' }, { slug: 'b', apply: 'chosen', pack: 'built' }], 'b').slug, 'b');
+eq('uno slug non pronto non ripiega su un altro annuncio',
+  pickForForm([{ slug: 'a', apply: 'chosen', pack: 'built' }, { slug: 'b', apply: 'queued', pack: 'built' }], 'b'), null);
 
 // -- Il profilo servito alla pagina -----------------------------------------
 //
@@ -334,7 +349,9 @@ ok('una fase gratuita non mostra nessun modello', preflight('search', summarise(
 // for every posting the deep read opens.
 ok('i modelli non girano dentro il repo, o si porterebbero dietro AGENTS.md',
   !MODEL_CWD.startsWith(resolve(here, '..')));
-ok('nessun attrezzo: il prompt arriva intero da stdin', claudeArgs('x').join(' ').includes("--allowed-tools  "));
+ok('nessun attrezzo: il set è vuoto, non solo pre-autorizzato', claudeArgs('x').join(' ').includes('--tools  '));
+ok('nessun transcript della CLI con brief e annunci dentro', claudeArgs('x').includes('--no-session-persistence'));
+ok('--allowed-tools non basta: lascia tutti gli attrezzi disponibili', !claudeArgs('x').includes('--allowed-tools'));
 ok('nessun server MCP al seguito', claudeArgs('x').includes('--strict-mcp-config'));
 eq('il modello chiesto è quello che parte', claudeArgs('sonnet')[claudeArgs('sonnet').indexOf('--model') + 1], 'sonnet');
 

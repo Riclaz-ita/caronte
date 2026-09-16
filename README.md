@@ -1,10 +1,29 @@
 <p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/wordmark-dark.svg"><img src="docs/wordmark-light.svg" alt="career-ops" width="250" height="56"></picture></p>
 
-<div align="center">
+# Caronte
 
-[English](README.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [Português (Brasil)](README.pt-BR.md) | [한국어](README.ko-KR.md) | [日本語](README.ja.md) | [简体中文](README.cn.md) | [繁體中文](README.zh-TW.md) | [Українська](README.ua.md) | [Русский](README.ru.md) | [Polski](README.pl.md) | [Dansk](README.da.md) | [தமிழ்](README.ta.md) | [العربية](README.ar.md) | [हिन्दी](README.hi.md) | [Türkçe](README.tr.md)
+Caronte è il pannello locale di candidature costruito sopra Career Ops: cerca gli annunci, li fa valutare a Claude Code, prepara CV e lettera, apre il form nel browser e, quando dici «Ho inviato», registra la candidatura nel tracker da cui partono follow-up e statistiche. Non invia mai niente da solo.
 
-</div>
+**Prerequisiti:** Node 22.5 o più recente, Claude Code installato (`claude --version` deve rispondere), Chromium di Playwright (`npx playwright install chromium`).
+
+```bash
+npm install
+cp candidate-brief.example.md candidate-brief.md     # chi sei, cosa non puoi dichiarare
+cp config/profile.example.yml config/profile.yml      # recapiti per i form
+cp templates/portals.example.yml portals.yml          # dove cercare
+cp cv-variants.example.yml cv-variants.yml            # quale CV base per ogni tipo di ruolo
+cp cover-base.example.json cover-base.json            # i fatti per la lettera
+npm run ui                                            # http://localhost:4176
+```
+
+La pagina elenca da sola i file che mancano. I tuoi dati restano nella cartella (o nella radice dati indicata da `CAREER_OPS_ROOT`) e sono ignorati da git; al modello arrivano solo il brief e il testo degli annunci. Questo checkout è un fork: l'aggiornamento automatico da upstream è disattivato (`.caronte-fork`), upstream si integra con `git merge`.
+
+Il resto di questo README è la documentazione di Career Ops, il motore su cui Caronte poggia.
+
+---
+
+
+
 
 <p align="center">
   <a href="https://x.com/santifer"><img src="docs/hero-banner.jpg" alt="career-ops Multi-Agent Job Search System" width="800"></a>
@@ -49,7 +68,7 @@
 ---
 
 <p align="center">
-  <img src="docs/demo.gif" alt="career-ops Demo" width="800">
+  <img src="https://raw.githubusercontent.com/career-ops-hq/career-ops/main/docs/demo.gif" alt="career-ops Demo" width="800">
 </p>
 
 <p align="center"><strong>740+ job listings evaluated · 100+ personalized CVs · 1 dream role landed</strong></p>

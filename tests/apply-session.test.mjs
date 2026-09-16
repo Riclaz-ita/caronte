@@ -27,8 +27,8 @@ function eq(label, actual, expected) {
 function ok(label, cond) { if (cond) pass(label); else fail(label); }
 
 const sources = {
-  profile: { full_name: 'Ada Rossi', email: 'ada.rossi@example.com', phone: '+39 000 000 0000',
-             location: 'Sesto San Giovanni (Milan), Italy', linkedin: 'https://linkedin.com/in/x' },
+  profile: { full_name: 'Ada Rossi', email: 'ada.rossi@example.com', phone: '+39 333 000 0000',
+             location: 'Bergamo (BG), Italy', linkedin: 'https://linkedin.com/in/x' },
   answerBank: { 'how did you hear about us': 'Through the company careers page.' },
 };
 
@@ -75,14 +75,18 @@ eq('role alone still gates', checkIdentity('Globex is hiring a Head of Sales.' +
 // -- I3: --next must also offer a row whose JD could not be fetched --
 // Nothing read jd_failed: build-packs filters on pending and this script
 // filtered on built, so an unsupported-ATS posting vanished silently.
+// Rows are `chosen`: --next opens only what the candidate said yes to. A
+// `queued` row is undecided and is never opened on his behalf.
 const pool = [
-  { slug: 'built-low', pack: 'built', apply: 'queued', score: 3.6 },
-  { slug: 'built-high', pack: 'built', apply: 'queued', score: 4.8 },
-  { slug: 'jd-failed', pack: 'jd_failed', apply: 'queued', score: 4.2 },
-  { slug: 'pending', pack: 'pending', apply: 'queued', score: 5 },
+  { slug: 'built-low', pack: 'built', apply: 'chosen', score: 3.6 },
+  { slug: 'built-high', pack: 'built', apply: 'chosen', score: 4.8 },
+  { slug: 'jd-failed', pack: 'jd_failed', apply: 'chosen', score: 4.2 },
+  { slug: 'pending', pack: 'pending', apply: 'chosen', score: 5 },
   { slug: 'already-dead', pack: 'built', apply: 'dead', score: 5 },
+  { slug: 'undecided', pack: 'built', apply: 'queued', score: 5 },
 ];
-eq('--next takes the highest-scoring queued row', selectRow(pool, null).slug, 'built-high');
+eq('--next takes the highest-scoring chosen row', selectRow(pool, null).slug, 'built-high');
+eq('--next never opens a queued row: undecided is not chosen', selectRow([pool[5]], null), null);
 eq('--next reaches a jd_failed row once the built ones are done',
    selectRow(pool.filter(r => r.slug !== 'built-high' && r.slug !== 'built-low'), null).slug, 'jd-failed');
 eq('--next never offers an untriaged pending row', selectRow([pool[3]], null), null);
@@ -120,7 +124,7 @@ const filled = await fillForm(page, plan.fills.map(f => ({ ...f, selector: field
 eq('first name is filled', await page.inputValue('#fn'), 'Ada');
 eq('last name is filled', await page.inputValue('#ln'), 'Rossi');
 eq('email is filled', await page.inputValue('#em'), 'ada.rossi@example.com');
-eq('phone is filled', await page.inputValue('#ph'), '+39 000 000 0000');
+eq('phone is filled', await page.inputValue('#ph'), '+39 333 000 0000');
 eq('answer bank question is filled', await page.inputValue('#hd'), 'Through the company careers page.');
 
 // The guarantee: every never-fill field is still empty.

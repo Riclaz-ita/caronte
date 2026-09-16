@@ -26,9 +26,19 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, join } from 'path';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { loadCandidateBrief } from './candidate-brief.mjs';
+import { DATA_BARRIER } from './triage.mjs';
 
-/** Where one posting's analysis lives. Same slug as the queue row and the JD. */
+/** The only shape a slug may have: what rowsFromPipeline/jdSlug produce. */
+export const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,99}$/;
+
+/**
+ * Where one posting's analysis lives. Same slug as the queue row and the JD.
+ *
+ * The slug is validated here, at the one place it becomes a path, so no
+ * caller can reach outside analyses/ with a `../` dressed up as a slug.
+ */
 export function analysisPath(slug, root = getCareerOpsRoot()) {
+  if (!SLUG_RE.test(String(slug))) throw new Error(`slug non valido: "${slug}"`);
   return join(root, 'analyses', `${slug}.json`);
 }
 
@@ -64,19 +74,23 @@ export function buildAnalysisPrompt({ slug, company, role, location, jd }, brief
     '  "testo" MUST be copied from the posting word for word, in its own language.',
     '  Never paraphrase, never summarise, never merge two requirements into one.',
     '  "bloccante" is true when failing it rules the candidate out on its own: a',
-    '  years-of-experience floor, a degree in another field, a language he does not',
-    '  speak, a mandatory office in another country, a programming language, a public',
-    '  portfolio. It is false for anything a good application can argue around.',
-    '  "perche" is ONE short sentence in Italian saying why he meets it or does not,',
-    '  naming what in his profile decides it.',
+    '  years-of-experience floor, a degree in another field, a language they do not',
+    '  speak, a mandatory office where they will not go, a skill, tool or title family',
+    '  the brief rules out, a portfolio they do not have. It is false for anything a',
+    '  good application can argue around. Judge only against the brief above.',
+    '  "perche" is ONE short sentence in Italian saying why the candidate meets it or',
+    '  does not, naming what in the brief decides it.',
     '',
     'agganci — at most three things the cover letter can honestly claim, each tied to',
-    '  a fact that is true of the candidate from the paragraph above. "punto" is what',
-    '  the posting asks for, "fatto" is what he actually has. If a hook has no fact',
+    '  a fact that is true of the candidate from the brief above. "punto" is what',
+    '  the posting asks for, "fatto" is what they actually have. If a hook has no fact',
     '  behind it, leave it out. An empty list is a valid and useful answer.',
     '',
     'sintesi — ONE sentence in Italian, max 30 words: what this job really is and',
-    '  whether it is worth his time. Say it plainly, including when the answer is no.',
+    '  whether it is worth the candidate\'s time. Say it plainly, including when the',
+    '  answer is no.',
+    '',
+    DATA_BARRIER,
     '',
     '='.repeat(72),
     `Company: ${company}`,
@@ -93,17 +107,24 @@ export function buildAnalysisPrompt({ slug, company, role, location, jd }, brief
  * A malformed analysis that got written anyway would show the candidate a
  * percentage computed from nothing, which is worse than an error he can see.
  */
-export function parseAnalysis(text, slug) {
+export function parseAnalysis(text, slug, jd = null) {
   const cleaned = String(text).replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
   let data;
   try { data = JSON.parse(cleaned); } catch { throw new Error("l'analisi non è JSON leggibile"); }
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error("l'analisi non è un oggetto JSON");
   if (slug && data.slug !== slug) throw new Error(`l'analisi dice slug "${data.slug}", ne aspettavo "${slug}"`);
   if (!Array.isArray(data.requisiti)) throw new Error('manca la lista dei requisiti');
+  const fold = (t) => String(t).toLowerCase().replace(/\s+/g, ' ').trim();
+  const haystack = jd === null ? null : fold(jd);
   for (const r of data.requisiti) {
+    if (!r || typeof r !== 'object') throw new Error('un requisito non è un oggetto');
     if (typeof r.testo !== 'string' || !r.testo.trim()) throw new Error('un requisito non cita il testo dell\'annuncio');
     if (!STATI.includes(r.stato)) throw new Error(`stato "${r.stato}" non riconosciuto`);
     if (typeof r.bloccante !== 'boolean') throw new Error(`il requisito "${r.testo.slice(0, 40)}" non dice se è bloccante`);
+    // The prompt demands a verbatim quote. When the posting is at hand, say
+    // whether the quote is really in it: a "requirement" the posting never
+    // states must not read as one the candidate fails.
+    if (haystack !== null) r.citato = haystack.includes(fold(r.testo));
   }
   // A hook with no fact behind it is the failure this whole file exists to
   // prevent, so it is dropped here rather than shown and trusted.
@@ -112,7 +133,8 @@ export function parseAnalysis(text, slug) {
     : [];
   return {
     slug: data.slug,
-    requisiti: data.requisiti,
+    requisiti: data.requisiti.map((r) => ({ testo: r.testo, stato: r.stato, bloccante: r.bloccante,
+      perche: typeof r.perche === 'string' ? r.perche : '', ...('citato' in r ? { citato: r.citato } : {}) })),
     agganci,
     sintesi: typeof data.sintesi === 'string' ? data.sintesi.trim() : '',
   };

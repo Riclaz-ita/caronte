@@ -85,7 +85,9 @@ If `{"status": "update-available", "reason": ..., "local": ..., "remote": ..., "
 - Otherwise:
   > "career-ops update available (v{local} → v{remote}). Your data (CV, profile, tracker, reports) will NOT be touched. Want me to update?"
 
-If yes → `node update-system.mjs apply --confirm`. If no → `node update-system.mjs dismiss`. Every other status (`up-to-date`, `dismissed`, `offline`, `no-remote-version`) → say nothing. The user can force a check anytime ("check for updates" / "update career-ops"); rollback: `node update-system.mjs rollback`.
+If yes → `node update-system.mjs apply --confirm`. If no → `node update-system.mjs dismiss`. Every other status (`up-to-date`, `dismissed`, `offline`, `no-remote-version`, `fork`) → say nothing.
+
+**This checkout is the Caronte fork** (marker file `.caronte-fork`): `check` always answers `fork` and `apply` refuses. Upstream career-ops is integrated by hand with `git fetch upstream && git merge upstream/main` on a branch, and the test suite decides whether the merge lands. The panel is started with `npm run ui`. The user can force a check anytime ("check for updates" / "update career-ops"); rollback: `node update-system.mjs rollback`.
 
 ## What is career-ops
 

@@ -18,7 +18,7 @@
 import { chromium } from 'playwright';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readQueue, writeQueue, upsertRow } from './apply-queue.mjs';
+import { readQueue, updateQueue, patchRow } from './apply-queue.mjs';
 import { loadSources, planFills, isNeverFill } from './field-provenance.mjs';
 import { LIVENESS_CONTEXT_OPTIONS } from './liveness-browser.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
@@ -216,8 +216,10 @@ export async function readFormFields(page) {
  */
 export function selectRow(rows, slug) {
   if (slug) return rows.find((r) => r.slug === slug) || null;
+  // Only rows the candidate said yes to. A queued row is undecided, and
+  // opening its form before the decision is the panel deciding for him.
   return rows
-    .filter((r) => (r.apply === 'queued' || r.apply === 'chosen') && (r.pack === 'built' || r.pack === 'jd_failed'))
+    .filter((r) => r.apply === 'chosen' && (r.pack === 'built' || r.pack === 'jd_failed'))
     .sort((a, b) => Number(b.score) - Number(a.score))[0] || null;
 }
 
@@ -286,7 +288,7 @@ export function renderProvenanceReport(filled, asks) {
 
 if (isMainModule(import.meta.url)) {
   const args = process.argv.slice(2);
-  let rows = readQueue(QUEUE);
+  const rows = readQueue(QUEUE);
   const slug = args.includes('--slug') ? args[args.indexOf('--slug') + 1] : null;
   const useNext = args.includes('--next');
   if (slug && useNext) {
@@ -298,7 +300,7 @@ if (isMainModule(import.meta.url)) {
   if (!row) { console.error('No matching row. Run build-packs.mjs first.'); process.exit(1); }
 
   const sources = loadSources({
-    profileYml: resolve(__dirname, 'config', 'profile.yml'),
+    profileYml: resolve(getCareerOpsRoot(), 'config', 'profile.yml'),
     answerBankPath: resolve(getCareerOpsRoot(), 'data', 'answer-bank.md'),
   });
 
@@ -323,8 +325,7 @@ if (isMainModule(import.meta.url)) {
   if (!identity.ok) {
     console.log(`STOPPED — ${identity.reason}\n`);
     if (identity.kind === 'dead') {
-      rows = upsertRow(rows, { ...row, apply: 'dead' });
-      writeQueue(QUEUE, rows);
+      await updateQueue(QUEUE, (current) => patchRow(current, row.slug, { apply: 'dead' }));
       console.log(`Marked ${row.slug} as dead. Run again with --next for the following role.`);
     } else {
       console.log('Nothing was filled. Tell me whether to re-evaluate this posting or skip it.');
@@ -342,8 +343,7 @@ if (isMainModule(import.meta.url)) {
 
   console.log(renderProvenanceReport(filled, plan.asks));
 
-  rows = upsertRow(rows, { ...row, apply: 'opened' });
-  writeQueue(QUEUE, rows);
+  await updateQueue(QUEUE, (current) => patchRow(current, row.slug, { apply: 'opened' }));
   console.log('The browser stays open. Mark the outcome with:');
   console.log(`  node apply-queue.mjs --set ${row.slug} apply=submitted`);
 }

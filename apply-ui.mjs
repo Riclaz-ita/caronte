@@ -31,15 +31,17 @@ import { readFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  readQueue, writeQueue, parsePipeline, pickAcrossPortals,
+  readQueue, updateQueue, parsePipeline, pickAcrossPortals,
   parseFocus, describeFocus, matchesFocus,
 } from './apply-queue.mjs';
-import { pendingTriage, loadJd } from './triage.mjs';
+import { pendingTriage, loadJd, BATCH_MAX } from './triage.mjs';
 import {
   buildAnalysisPrompt, parseAnalysis, scoreFit, pendingAnalysis,
-  saveAnalysis, loadAnalysis, analysisPath,
+  saveAnalysis, loadAnalysis, analysisPath, SLUG_RE,
 } from './analyze.mjs';
-import { loadProfileCard } from './candidate-brief.mjs';
+import { loadProfileCard, BRIEF_FILE } from './candidate-brief.mjs';
+import { recordSubmission } from './record-submission.mjs';
+import { spawnSync } from 'node:child_process';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import * as yaml from 'js-yaml';
@@ -91,12 +93,17 @@ export const MODEL_CWD = tmpdir();
 /**
  * The flags every model call shares.
  *
- * No tools, no MCP servers, plain text out. `--strict-mcp-config` saves little
- * today (461 tokens, measured) but it makes the call hermetic: a server added
- * later cannot quietly start riding along on twenty-one requests.
+ * No tools, no MCP servers, plain text out, no transcript kept. `--tools ''`
+ * is the flag that empties the tool set; `--allowed-tools ''` only said which
+ * tools may run without asking, and left every tool available to a prompt
+ * that carries text copied off the open web. `--strict-mcp-config` saves
+ * little today (461 tokens, measured) but it makes the call hermetic: a
+ * server added later cannot quietly start riding along on twenty-one
+ * requests. `--no-session-persistence` keeps the candidate's brief and the
+ * postings out of the CLI's own transcript folder.
  */
 export function claudeArgs(model) {
-  return ['-p', '--model', model, '--allowed-tools', '', '--strict-mcp-config', '--output-format', 'text'];
+  return ['-p', '--model', model, '--tools', '', '--strict-mcp-config', '--no-session-persistence', '--output-format', 'text'];
 }
 
 export const PHASE_MODEL = {
@@ -154,8 +161,8 @@ export const PHASES = [
   },
   {
     id: 'deep',
-    label: 'Analizza a fondo',
-    blurb: 'Rilegge un annuncio alla volta per intero e restituisce i requisiti citati alla lettera, quanto ci sei vicino in percentuale, e cosa la lettera può dire di vero.',
+    label: 'Leggi i requisiti',
+    blurb: 'Rilegge un annuncio alla volta per intero e restituisce i requisiti citati alla lettera, quanto ci sei vicino in percentuale, e cosa la lettera può dire di vero. Non fa ricerca sull\'azienda: quella resta alla modalità deep di Career Ops.',
     cost: 'token — una richiesta per annuncio',
     risk: 'medium',
     writes: ['analyses/'],
@@ -204,13 +211,32 @@ export const DECISIONS = {
   apply: { state: 'chosen', label: 'Candidati', blurb: 'Prepara i documenti e poi apri il form.' },
   partial: { state: 'partial', label: 'Solo documenti', blurb: 'Prepara CV e lettera, fermati lì: il form lo apri tu quando li hai letti.' },
   skip: { state: 'skipped', label: 'Ignora', blurb: 'Fuori dalla coda. Nessun documento, nessun form.' },
+  sent: { state: 'submitted', label: 'Ho inviato', blurb: 'Segna la candidatura come inviata: non si riapre più.' },
+};
+
+/**
+ * Which states a decision may move a row out of.
+ *
+ * `submitted` and `dead` are terminal: an application that went out cannot be
+ * un-sent by a click, and a closed posting cannot be re-chosen. Everything
+ * else is the candidate changing his mind, which is allowed in both
+ * directions. "Ho inviato" needs the form to have been opened or the row to
+ * have been chosen: a row nobody decided on cannot have been sent.
+ */
+export const TRANSITIONS = {
+  chosen: ['queued', 'partial', 'opened', 'skipped'],
+  partial: ['queued', 'chosen', 'opened', 'skipped'],
+  skipped: ['queued', 'chosen', 'partial', 'opened'],
+  submitted: ['chosen', 'partial', 'opened'],
 };
 
 /**
  * Apply one decision to one row.
  *
  * Returns the new rows plus whether anything changed, so the caller can avoid
- * rewriting the queue file for a no-op click.
+ * rewriting the queue file for a no-op click. A move the state machine does
+ * not allow throws: the page must never turn `submitted` back into
+ * `skipped` because two buttons were pressed in the wrong order.
  */
 export function applyDecision(rows, slug, decision) {
   const spec = DECISIONS[decision];
@@ -218,6 +244,9 @@ export function applyDecision(rows, slug, decision) {
   const i = rows.findIndex((r) => r.slug === slug);
   if (i === -1) throw new Error(`nessuna riga con slug "${slug}"`);
   if (rows[i].apply === spec.state) return { rows, changed: false };
+  if (!TRANSITIONS[spec.state].includes(rows[i].apply)) {
+    throw new Error(`"${spec.label}" non è ammesso su una riga in stato "${rows[i].apply}"`);
+  }
   const next = [...rows];
   next[i] = { ...next[i], apply: spec.state };
   return { rows: next, changed: true };
@@ -264,7 +293,7 @@ export const PACK_THRESHOLD = 3.5;
  * nothing, and the suggested next step stayed stuck on it forever.
  */
 export function packsPending(rows) {
-  return rows.filter((r) => r.pack === 'pending'
+  return rows.filter((r) => (r.pack === 'pending' || r.pack === 'failed')
     && r.score !== ''
     && Number(r.score) >= PACK_THRESHOLD
     && r.apply !== 'skipped'
@@ -287,15 +316,18 @@ export function triageBatch(rows, limit, hasJd = () => true) {
 }
 
 /**
- * The row apply-session.mjs would open next.
+ * The row apply-session.mjs would open next, or the one the candidate named.
  *
- * Mirrors that script's own filter. When this said `queued` and the board
- * counted `chosen`, pressing Candidati and then the form button answered
- * "nothing is ready" on a row the same page had just called ready.
+ * Only `chosen` rows: `queued` is undecided, and opening its form before the
+ * decision is the panel choosing for him — that is how a queued row got opened
+ * ahead of the one he had pressed Candidati on. With a slug, the row must be
+ * that one and it must still be openable; anything else is null, not "the
+ * next best".
  */
-export function pickForForm(rows) {
-  return rows.find((r) => (r.apply === 'queued' || r.apply === 'chosen')
-    && (r.pack === 'built' || r.pack === 'jd_failed')) || null;
+export function pickForForm(rows, slug = null) {
+  const openable = (r) => r.apply === 'chosen' && (r.pack === 'built' || r.pack === 'jd_failed');
+  if (slug) return rows.find((r) => r.slug === slug && openable(r)) || null;
+  return rows.find(openable) || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -669,18 +701,33 @@ function log(run, line) {
   if (run.lines.length > 600) run.lines.splice(0, run.lines.length - 600);
 }
 
-/** Run one command, collecting its output into the run log. Resolves with the exit code. */
+/** Longest one step may run before it is killed and reported. */
+export const STEP_TIMEOUT_MS = Number(process.env.CAREER_OPS_STEP_TIMEOUT_MS) || 20 * 60_000;
+
+/**
+ * Run one command, collecting its output into the run log.
+ *
+ * Resolves with the exit code, `stdout` on its own (what a JSON parser reads)
+ * and `output` with both streams (what the error report shows). A warning
+ * on stderr used to be glued in front of a good JSON answer and fail it. A
+ * step that hangs is killed at STEP_TIMEOUT_MS rather than holding the page
+ * busy for good.
+ */
 function exec(run, { label, cmd, args, cwd = __dirname, input = null }) {
   return new Promise((done) => {
     log(run, `→ ${label}`);
-    const child = spawn(cmd, args, { cwd });
+    const child = spawn(cmd, args, { cwd, timeout: STEP_TIMEOUT_MS, killSignal: 'SIGTERM' });
+    let stdout = '';
     let output = '';
-    const take = (buf) => { output += buf; log(run, buf.toString()); };
-    child.stdout.on('data', take);
-    child.stderr.on('data', take);
+    child.stdout.on('data', (buf) => { stdout += buf; output += buf; log(run, buf.toString()); });
+    child.stderr.on('data', (buf) => { output += buf; log(run, buf.toString()); });
     if (input !== null) { child.stdin.write(input); child.stdin.end(); }
-    child.on('error', (err) => done({ code: -1, output: `${output}\n${err.message}`, label }));
-    child.on('close', (code) => done({ code, output, label }));
+    child.on('error', (err) => done({ code: -1, stdout, output: `${output}\n${err.message}`, label }));
+    child.on('close', (code, signal) => done({
+      code: code ?? -1, stdout,
+      output: signal ? `${output}\ninterrotto (${signal}) dopo ${Math.round(STEP_TIMEOUT_MS / 60_000)} minuti` : output,
+      label,
+    }));
   });
 }
 
@@ -688,7 +735,7 @@ function exec(run, { label, cmd, args, cwd = __dirname, input = null }) {
 async function runTriage(run, limit) {
   const { buildBatchPrompt, parseVerdicts, ingestVerdicts } = await import('./triage.mjs');
   const rows = readQueue(QUEUE);
-  const batch = triageBatch(rows, limit, (slug) => Boolean(loadJd(slug)));
+  const batch = triageBatch(rows, Math.min(limit ?? BATCH_MAX, BATCH_MAX), (slug) => Boolean(loadJd(slug)));
   if (!batch.length) {
     log(run, limit === 0 ? 'Quantità richiesta: zero. Non valuto niente.' : 'Nessun annuncio da valutare.');
     return;
@@ -714,9 +761,10 @@ async function runTriage(run, limit) {
   });
   if (r.code !== 0) throw Object.assign(new Error(`la valutazione è uscita con codice ${r.code}`), { step: r.label, output: r.output });
 
-  const verdicts = parseVerdicts(r.output);
-  const next = ingestVerdicts(rows, verdicts);
-  writeQueue(QUEUE, next);
+  const verdicts = parseVerdicts(r.stdout);
+  const asked = entries.map((e) => e.slug);
+  // Re-read under the lock: a decision taken while the model worked survives.
+  await updateQueue(QUEUE, (current) => ingestVerdicts(current, verdicts, asked));
   log(run, `Scritti ${verdicts.length} verdetti in coda.`);
 }
 
@@ -754,13 +802,15 @@ async function runDeep(run, limit) {
     });
     if (r.code !== 0) { falliti.push(`${row.slug}: uscito con codice ${r.code}`); continue; }
     try {
-      const analysis = parseAnalysis(r.output, row.slug);
+      const analysis = parseAnalysis(r.stdout, row.slug, loadJd(row.slug));
       saveAnalysis(row.slug, analysis);
       const fit = scoreFit(analysis);
       fatti += 1;
       log(run, fit.blocked
         ? `  ✗ non raggiungibile — ${fit.blockers[0]}`
         : `  ${fit.percent}% su ${fit.total} requisiti`);
+      const nonCitati = analysis.requisiti.filter((q) => q.citato === false).length;
+      if (nonCitati) log(run, `  ${nonCitati} requisiti non sono citati alla lettera dall'annuncio: leggili con sospetto.`);
     } catch (err) {
       falliti.push(`${row.slug}: ${err.message}`);
     }
@@ -777,11 +827,14 @@ async function runDeep(run, limit) {
   if (falliti.length) log(run, `Non letti: ${falliti.join(' · ')}`);
 }
 
-/** Open one queued posting in a real browser with its fields filled. */
-async function runForm(run) {
+/** Open one chosen posting in a real browser with its fields filled. */
+async function runForm(run, slug) {
   const rows = readQueue(QUEUE);
-  const target = pickForForm(rows);
-  if (!target) { log(run, 'Nessun annuncio pronto per il form.'); return; }
+  const target = pickForForm(rows, slug);
+  if (!target) {
+    log(run, slug ? `${slug} non è pronto per il form: deve essere scelto e avere i documenti.` : 'Nessun annuncio pronto per il form.');
+    return;
+  }
   log(run, `Apro ${target.company} — ${target.role}`);
   const r = await exec(run, {
     label: 'compilazione form',
@@ -800,7 +853,7 @@ async function runPhase(run, phase, opts) {
     } else if (phase.steps === 'deep') {
       await runDeep(run, opts.limit);
     } else if (phase.steps === 'form') {
-      await runForm(run);
+      await runForm(run, opts.slug);
     } else {
       const steps = typeof phase.steps === 'function' ? phase.steps(opts) : phase.steps;
       for (const step of steps) {
@@ -845,6 +898,46 @@ function readBody(req) {
   });
 }
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * Why a request may not change anything, or null when it may.
+ *
+ * The server listens on 127.0.0.1, but a page on any other site can still
+ * make the browser send a POST here, and the browser will. Three checks,
+ * each one enough on its own: the Host must be this machine (a rebound DNS
+ * name is not), the Origin when present must be this machine too, and the
+ * browser's own Sec-Fetch-Site must not say cross-site. Mutations are JSON
+ * only: a text/plain body is what a cross-site form can send without a
+ * preflight. No cookie or token, because there is no account: the boundary
+ * is "this browser, this origin", which is what these headers state.
+ */
+export function refuseCrossSite(req) {
+  const host = String(req.headers.host || '').replace(/:\d+$/, '');
+  if (!LOCAL_HOSTS.has(host)) return `Host "${req.headers.host}" non è locale`;
+  const origin = req.headers.origin;
+  if (origin) {
+    let o;
+    try { o = new URL(origin); } catch { return `Origin "${origin}" non leggibile`; }
+    if (!LOCAL_HOSTS.has(o.hostname) && !LOCAL_HOSTS.has(`[${o.hostname}]`)) return `Origin "${origin}" non è locale`;
+  }
+  const site = req.headers['sec-fetch-site'];
+  if (site && site !== 'same-origin' && site !== 'none') return `richiesta ${site}`;
+  if (req.method !== 'GET') {
+    const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (type !== 'application/json') return `le modifiche accettano solo JSON, non "${type || 'nessun tipo'}"`;
+  }
+  return null;
+}
+
+/** A batch size from the page: a non-negative integer, or undefined for "no limit". */
+export function parseLimit(raw) {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > 1000) throw new Error(`quantità non valida: "${raw}"`);
+  return n;
+}
+
 /** Whether a posting's job description made it to disk. */
 function jdExists(slug) {
   return existsSync(join(getCareerOpsRoot(), 'jds', `${slug}.md`));
@@ -859,6 +952,27 @@ function fitOf(slug) {
     percent: fit.percent, blocked: fit.blocked, blockers: fit.blockers,
     total: fit.total, sintesi: a.sintesi || '',
   };
+}
+
+/**
+ * What a fresh install is missing before Caronte can run, in Italian, with
+ * the command that fixes each one. The page shows this instead of a search
+ * button over zero portals and an English error about a Markdown file.
+ */
+export function caronteDoctor(root = getCareerOpsRoot()) {
+  const need = (path, what, how) => (existsSync(resolve(root, path)) ? null : { path, what, how });
+  const missing = [
+    need(BRIEF_FILE, 'la tua descrizione per il modello', `cp candidate-brief.example.md ${BRIEF_FILE} e riscrivilo come te`),
+    need('config/profile.yml', 'nome, email e recapiti per i form', 'cp config/profile.example.yml config/profile.yml'),
+    need('portals.yml', 'i portali da cercare', 'cp templates/portals.example.yml portals.yml'),
+    need('cv-variants.yml', 'quale CV base usare per ogni tipo di ruolo', 'cp cv-variants.example.yml cv-variants.yml e fai puntare ogni voce a un tuo CV HTML in output/'),
+    need('cover-base.json', 'i fatti veri per la lettera di presentazione', 'cp cover-base.example.json cover-base.json e compilalo dal tuo CV'),
+  ].filter(Boolean);
+  const claude = spawnSync(CLAUDE_BIN, ['--version'], { encoding: 'utf-8' });
+  if (claude.error || claude.status !== 0) {
+    missing.push({ path: CLAUDE_BIN, what: 'Claude Code, che dà i punteggi', how: 'installa Claude Code e verifica che "claude --version" risponda, oppure imposta CAREER_OPS_CLAUDE_BIN' });
+  }
+  return { ready: missing.length === 0, missing };
 }
 
 function currentState() {
@@ -885,6 +999,9 @@ export function createApp() {
   return createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     try {
+      const refused = refuseCrossSite(req);
+      if (refused) return json(res, 403, { error: `rifiutata: ${refused}` });
+
       if (req.method === 'GET' && url.pathname === '/') {
         const html = readFileSync(PAGE, 'utf-8');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -906,20 +1023,30 @@ export function createApp() {
 
       if (req.method === 'POST' && url.pathname === '/api/preflight') {
         const body = await readBody(req);
-        return json(res, 200, preflight(body.phase, currentState().stats, { limit: body.limit, focus: body.focus }));
+        let limit;
+        try { limit = parseLimit(body.limit); } catch (err) { return json(res, 400, { error: err.message }); }
+        return json(res, 200, preflight(body.phase, currentState().stats, { limit, focus: body.focus }));
       }
 
       if (req.method === 'POST' && url.pathname === '/api/run') {
         const body = await readBody(req);
         const phase = phaseById(body.phase);
         if (!phase) return json(res, 400, { error: `fase sconosciuta: "${body.phase}"` });
+        let limit;
+        try { limit = parseLimit(body.limit); } catch (err) { return json(res, 400, { error: err.message }); }
+        if (body.slug !== undefined && !SLUG_RE.test(String(body.slug))) return json(res, 400, { error: 'slug non valido' });
         // 428 Precondition Required: the phase is valid but the candidate has
         // not yet seen what it would do. The body is the dialog to show.
         if (body.confirm !== true) {
-          return json(res, 428, preflight(phase.id, currentState().stats, { limit: body.limit, focus: body.focus }));
+          return json(res, 428, preflight(phase.id, currentState().stats, { limit, focus: body.focus }));
         }
+        // One phase at a time, enforced here and not only by greyed buttons:
+        // two writers on the queue is the race the lock exists to lose gracefully,
+        // and two model runs is money spent twice on the same rows.
+        const busy = [...runs.values()].find((r) => r.status === 'running');
+        if (busy) return json(res, 409, { error: `è già in corso "${busy.phase}" (${busy.id}); aspetta che finisca` });
         const run = newRun(phase.id);
-        runPhase(run, phase, { limit: body.limit, focus: body.focus });
+        runPhase(run, phase, { limit, focus: body.focus, slug: body.slug });
         return json(res, 202, { runId: run.id });
       }
 
@@ -937,6 +1064,10 @@ export function createApp() {
         }
       }
 
+      if (req.method === 'GET' && url.pathname === '/api/doctor') {
+        return json(res, 200, caronteDoctor());
+      }
+
       if (req.method === 'GET' && url.pathname === '/api/profile') {
         try {
           return json(res, 200, { sections: loadProfileCard() });
@@ -947,6 +1078,7 @@ export function createApp() {
 
       if (req.method === 'GET' && url.pathname.startsWith('/api/analysis/')) {
         const slug = decodeURIComponent(url.pathname.slice('/api/analysis/'.length));
+        if (!SLUG_RE.test(slug)) return json(res, 404, { error: 'nessuna analisi per questo annuncio' });
         const a = loadAnalysis(slug);
         if (!a) return json(res, 404, { error: 'nessuna analisi per questo annuncio' });
         return json(res, 200, { ...a, fit: scoreFit(a) });
@@ -960,10 +1092,27 @@ export function createApp() {
 
       if (req.method === 'POST' && url.pathname === '/api/decide') {
         const body = await readBody(req);
-        const rows = readQueue(QUEUE);
-        const { rows: next, changed } = applyDecision(rows, body.slug, body.decision);
-        if (changed) { snapshot(); writeQueue(QUEUE, next); }
-        return json(res, 200, { changed, state: DECISIONS[body.decision].state });
+        if (!DECISIONS[body.decision]) return json(res, 400, { error: `decisione sconosciuta: "${body.decision}"` });
+        let changed = false;
+        try {
+          await updateQueue(QUEUE, (rows) => {
+            const r = applyDecision(rows, body.slug, body.decision);
+            changed = r.changed;
+            if (changed) snapshot();
+            return r.rows;
+          });
+        } catch (err) {
+          return json(res, 409, { error: err.message });
+        }
+        // "Ho inviato" is the one decision the rest of the system must hear
+        // about: tracker row, status log, first follow-up. A failure here does
+        // not undo the decision — the application went out either way — but
+        // it is reported, not swallowed.
+        let tracker = null;
+        if (changed && DECISIONS[body.decision].state === 'submitted') {
+          try { tracker = await recordSubmission(body.slug); } catch (err) { tracker = { error: err.message }; }
+        }
+        return json(res, 200, { changed, state: DECISIONS[body.decision].state, tracker });
       }
 
       if (req.method === 'POST' && url.pathname === '/api/restore') {
@@ -971,8 +1120,8 @@ export function createApp() {
         if (body.confirm !== true) {
           return json(res, 428, {
             phase: 'restore',
-            label: 'Ripristina',
-            blurb: 'Rimette la coda com\'era prima dell\'ultima operazione che l\'ha scritta.',
+            label: 'Ripristina la coda',
+            blurb: 'Rimette la coda com\'era prima dell\'ultima operazione che l\'ha scritta. Solo la coda: JD, analisi e documenti restano.',
             risk: 'high',
             affects: 'tutte le decisioni e i punteggi presi da allora',
             writes: ['data/apply-queue.tsv'],

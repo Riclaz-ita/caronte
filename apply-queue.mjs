@@ -9,10 +9,11 @@
  *   node apply-queue.mjs --list                 # print the queue
  *   node apply-queue.mjs --validate             # exit 1 if any row is malformed
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
+import { acquireTrackerLock, writeFileAtomic } from './tracker-utils.mjs';
 
 export const QUEUE_COLUMNS = [
   'slug', 'url', 'company', 'role', 'location', 'archetype',
@@ -49,11 +50,45 @@ export function readQueue(path) {
     });
 }
 
-/** Write the queue, neutralising any tab or newline inside a value. */
+/**
+ * Write the queue, neutralising any tab or newline inside a value.
+ *
+ * Atomic (temp file + rename, the same primitive the tracker uses): a crash
+ * mid-write used to leave a half-file that read back as a shorter queue.
+ */
 export function writeQueue(path, rows) {
   mkdirSync(dirname(path), { recursive: true });
   const body = rows.map((r) => QUEUE_COLUMNS.map((c) => cell(r[c])).join('\t')).join('\n');
-  writeFileSync(path, `# ${QUEUE_COLUMNS.join('\t')} — written by apply-queue.mjs, do not edit by hand\n${body}\n`);
+  writeFileAtomic(path, `# ${QUEUE_COLUMNS.join('\t')} — written by apply-queue.mjs, do not edit by hand\n${body}\n`);
+}
+
+/**
+ * The one way to change a queue that other processes may be changing too.
+ *
+ * Acquires the queue lock, re-reads the file, applies `mutate(rows)` and
+ * writes the result atomically. Every writer used to read the whole queue,
+ * work for minutes, then write its stale snapshot back: a triage started
+ * before the candidate pressed "Ignora" put the row back to queued. Re-reading
+ * under the lock is what closes that window; `mutate` must therefore touch
+ * only the columns it owns (see patchRow) and never carry rows from an
+ * earlier read.
+ */
+export async function updateQueue(path, mutate) {
+  mkdirSync(dirname(path), { recursive: true });
+  const lock = await acquireTrackerLock(`${path}.lock`, { timeoutMs: 30_000, retryMs: 50, tracker: path });
+  try {
+    const rows = readQueue(path);
+    const next = mutate(rows);
+    if (next !== rows) writeQueue(path, next);
+    return next;
+  } finally {
+    lock.release();
+  }
+}
+
+/** Change some columns of one row, leaving the rest as the file has them now. */
+export function patchRow(rows, slug, patch) {
+  return rows.map((r) => (r.slug === slug ? { ...r, ...patch } : r));
 }
 
 /** Replace the row with the same slug, or append it. Returns a new array. */
@@ -287,7 +322,10 @@ if (isMainModule(import.meta.url)) {
       new Date().toISOString().slice(0, 10),
       rows.map((r) => r.slug),
     );
-    writeQueue(QUEUE, [...rows, ...added]);
+    await updateQueue(QUEUE, (current) => {
+      const have = new Set(current.map((r) => r.slug));
+      return [...current, ...added.filter((r) => !have.has(r.slug))];
+    });
 
     const portals = new Set(added.map((r) => { try { return new URL(r.url).host; } catch { return r.url; } }));
     const parts = [`Imported ${added.length} new rows from ${portals.size} portals`];
@@ -323,7 +361,7 @@ if (isMainModule(import.meta.url)) {
     const next = { ...row, [key]: value };
     const problems = validateRow(next);
     if (problems.length) { console.error(problems.join('; ')); process.exit(1); }
-    writeQueue(QUEUE, upsertRow(rows, next));
+    await updateQueue(QUEUE, (current) => patchRow(current, slug, { [key]: value }));
     console.log(`${slug}: ${key} = ${value}`);
   } else {
     console.error('Usage: node apply-queue.mjs --import-pipeline [--limit N] [--focus "terms"] | --list | --validate | --set <slug> <column>=<value>');

@@ -145,25 +145,33 @@ export function writeJd(slug, company, url, jd) {
 }
 
 if (isMainModule(import.meta.url)) {
-  const { readQueue, writeQueue, upsertRow } = await import('./apply-queue.mjs');
+  const { readQueue, updateQueue, patchRow } = await import('./apply-queue.mjs');
   const args = process.argv.slice(2);
   const queuePath = args.includes('--queue') ? args[args.indexOf('--queue') + 1] : null;
   if (!queuePath) { console.error('Usage: node fetch-jds.mjs --queue data/apply-queue.tsv'); process.exit(1); }
 
-  let rows = readQueue(resolve(__dirname, queuePath));
+  // Relative to the data root, not to this file: with CAREER_OPS_ROOT set the
+  // panel and this script otherwise read two different queues.
+  const queue = resolve(getCareerOpsRoot(), queuePath);
+  const rows = readQueue(queue);
   const pending = rows.filter((r) => !existsSync(resolve(getCareerOpsRoot(), 'jds', `${r.slug}.md`)));
   console.log(`Fetching ${pending.length} job descriptions...`);
 
+  let ok = 0;
   for (const row of pending) {
+    let fetched = false;
     try {
       const jd = await fetchJd(row.url);
       writeJd(row.slug, row.company, row.url, jd);
-      rows = upsertRow(rows, rowAfterFetch(row, true));
+      fetched = true;
+      ok += 1;
       console.log(`OK   ${row.slug}${row.pack === 'jd_failed' ? '  (cleared jd_failed)' : ''}`);
     } catch (err) {
-      rows = upsertRow(rows, rowAfterFetch(row, false));
       console.log(`FAIL ${row.slug}: ${err.message}`);
     }
+    await updateQueue(queue, (current) => patchRow(current, row.slug, { pack: rowAfterFetch(row, fetched).pack }));
   }
-  writeQueue(resolve(__dirname, queuePath), rows);
+  console.log(`Fetched ${ok} of ${pending.length}.`);
+  // Nothing readable at all is a setup or network problem the caller must see.
+  if (pending.length && ok === 0) process.exit(1);
 }
