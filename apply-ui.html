@@ -509,6 +509,10 @@ details.group > summary::-webkit-details-marker { display: none; }
 .state[data-k="dead"]::before      { background: repeating-linear-gradient(45deg, var(--ink-faint) 0 2px, transparent 2px 4px); }
 
 .pick { display: flex; gap: 0.375rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+/* Lo stato sta in fondo alla riga, non in mezzo ai dati: lì è un'etichetta che
+   si legge scorrendo la colonna, mentre dentro la riga dei metadati litigava
+   con l'azienda e il luogo per lo stesso spazio. */
+.pick .state { flex: 1 0 100%; justify-content: flex-end; color: var(--ink-soft); margin-bottom: 0.125rem; }
 .pick button { padding: 0.4375rem 0.75rem; font-size: var(--t-xs); }
 .pick button.primary { background: var(--paper-raised); border-color: var(--accent); color: var(--accent); }
 .pick button.primary:hover:not(:disabled) { background: var(--accent-wash); color: var(--accent-press); }
@@ -529,6 +533,23 @@ details.group > summary::-webkit-details-marker { display: none; }
 .more-body { padding-top: 0.875rem; max-width: 74ch; }
 .more-body .sintesi { margin: 0 0 1rem; font-size: var(--t-sm); line-height: 1.6; }
 
+/* La striscia dei fatti brevi: etichetta sopra, valore sotto, divisi da una
+   riga verticale. È il modo in cui le schede annuncio fatte bene mettono i due
+   o tre numeri che si leggono a colpo d'occhio, e costa una riga di griglia
+   invece di tre righe di elenco. I valori lunghi restano sotto, in elenco. */
+.strip {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  border: 1px solid var(--rule); border-radius: 8px;
+  margin: 0 0 1rem; overflow: hidden;
+}
+.strip > div { padding: 0.625rem 0.875rem; border-left: 1px solid var(--rule); min-width: 0; }
+.strip > div:first-child { border-left: 0; }
+.strip dt {
+  margin: 0 0 0.1875rem; font: 500 var(--t-xs)/1 var(--sans);
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint);
+}
+.strip dd { margin: 0; font-size: var(--t-sm); line-height: 1.4; }
+
 .pairs { display: grid; gap: 0; margin: 0 0 1rem; }
 .pair {
   display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 0.75rem;
@@ -539,6 +560,12 @@ details.group > summary::-webkit-details-marker { display: none; }
 .pair dd { margin: 0; min-width: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
 .pair dd a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in oklch, var(--accent) 35%, transparent); }
 .pair dd a:hover { border-bottom-color: var(--accent); }
+
+@media (max-width: 52rem) {
+  .strip { grid-auto-flow: row; grid-auto-columns: auto; }
+  .strip > div { border-left: 0; border-top: 1px solid var(--rule); }
+  .strip > div:first-child { border-top: 0; }
+}
 
 .req { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); gap: 0 0.625rem; padding: 0.5rem 0; border-top: 1px solid var(--rule); }
 .req .mark { font: 400 var(--t-sm)/1.5 var(--mono); color: var(--ink-soft); text-align: center; }
@@ -1285,11 +1312,13 @@ function rowHtml(r) {
       <div class="meta">
         <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.company || 'Azienda ignota')}</a>
         ${luogo ? `<span class="sep">·</span><span title="${esc(r.location)}">${esc(luogo)}</span>` : ''}
-        ${parola ? `<span class="sep">·</span><span class="state" data-k="${esc(r.apply)}">${esc(parola)}</span>` : ''}
       </div>
       ${r.teaser ? `<p class="teaser">${esc(r.teaser)}</p>` : ''}
     </div>
-    <div class="pick">${azioni(r)}</div>
+    <div class="pick">
+      ${parola ? `<span class="state" data-k="${esc(r.apply)}">${esc(parola)}</span>` : ''}
+      ${azioni(r)}
+    </div>
     <details class="more" data-more="${esc(r.slug)}" data-fit="${r.fit ? 'yes' : 'no'}">
       <summary>${esc(apertura(r))} <i class="caret" aria-hidden="true"></i></summary>
       <div class="more-body">carico…</div>
@@ -1312,12 +1341,20 @@ async function apriDettagli(det) {
 
   const r = state.rows.find((x) => x.slug === det.dataset.more);
   if (!r) { box.textContent = 'Questa riga non è più in coda.'; return; }
+  // I fatti brevi stanno nella striscia, uno accanto all'altro; quelli che
+  // occupano una riga intera restano in elenco sotto.
+  const corti = [
+    r.location ? ['Sede', esc(r.location)] : null,
+    r.level ? ['Livello', esc(r.level)] : null,
+    ['Testo', r.jd ? 'scaricato' : 'non si è lasciato scaricare'],
+    ['Documenti', r.pack === 'built' ? 'pronti' : r.pack === 'jd_failed' ? 'senza testo' : 'da preparare'],
+  ].filter(Boolean);
   const base = `
+    <dl class="strip">
+      ${corti.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+    </dl>
     <dl class="pairs">
-      ${r.location ? `<div class="pair"><dt>Sede</dt><dd>${esc(r.location)}</dd></div>` : ''}
-      ${r.level ? `<div class="pair"><dt>Livello</dt><dd>${esc(r.level)}</dd></div>` : ''}
       ${r.summary_line && r.summary_line !== 'n/a' ? `<div class="pair"><dt>Riga di CV</dt><dd>${esc(r.summary_line)}</dd></div>` : ''}
-      ${!r.jd ? '<div class="pair"><dt>Testo</dt><dd>l\'annuncio non si è lasciato scaricare</dd></div>' : ''}
       <div class="pair"><dt>Annuncio</dt><dd><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></dd></div>
     </dl>`;
 
