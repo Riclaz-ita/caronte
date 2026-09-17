@@ -40,14 +40,24 @@ import { isMainModule } from './lib/is-main-module.mjs';
 import { localToday } from './lib/local-today.mjs';
 
 const CLAUDE_BIN = process.env.CAREER_OPS_CLAUDE_BIN || 'claude';
-const MODEL = process.env.CAREER_OPS_WEBSEARCH_MODEL || 'sonnet';
+/**
+ * Opus 5 at medium effort, by default and on every run.
+ *
+ * The step reads search results and decides which link is one job posting and
+ * which is a listing page, a news article or a company homepage. A smaller
+ * model gets that wrong often enough that the queue fills with rubbish, and
+ * the whole run is one request: the better model costs pennies more per run.
+ * Medium effort is the working point, high burns time on a sorting job.
+ */
+export const MODEL = process.env.CAREER_OPS_WEBSEARCH_MODEL || 'claude-opus-5';
+export const EFFORT = process.env.CAREER_OPS_WEBSEARCH_EFFORT || 'medium';
 /** Cap on queries per run: each one is a paid search. */
 export const MAX_QUERIES = 12;
 const TIMEOUT_MS = 15 * 60_000;
 
 /** The flags for a worker that may search the web and do nothing else. */
-export function webSearchArgs(model = MODEL) {
-  return ['-p', '--model', model, '--tools', 'WebSearch', '--allowedTools', 'WebSearch',
+export function webSearchArgs(model = MODEL, effort = EFFORT) {
+  return ['-p', '--model', model, '--effort', effort, '--tools', 'WebSearch', '--allowedTools', 'WebSearch',
     '--strict-mcp-config', '--no-session-persistence', '--output-format', 'text'];
 }
 
@@ -153,7 +163,7 @@ if (isMainModule(import.meta.url)) {
   const queries = enabledQueries(cfg);
   if (!queries.length) { console.log('Nessuna query attiva in search_queries: ricerca web saltata.'); process.exit(0); }
 
-  console.log(`Ricerca web: ${queries.length} query con ${MODEL}.`);
+  console.log(`Ricerca web: ${queries.length} query con ${MODEL}, effort ${EFFORT}.`);
   const r = spawnSync(CLAUDE_BIN, webSearchArgs(), {
     input: buildWebSearchPrompt(queries), cwd: tmpdir(), encoding: 'utf-8', timeout: TIMEOUT_MS,
   });

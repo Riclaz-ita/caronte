@@ -15,7 +15,7 @@ import {
   preflight, shapeError, snapshotPath, snapshot, restore,
   parseFocus, describeFocus, matchesFocus, inboxCovers, loadSources,
   PACK_THRESHOLD, packsPending, pickForForm, triageBatch, PHASE_MODEL,
-  MODEL_CWD, claudeArgs,
+  MODEL_CWD, claudeArgs, teaserFromJd,
 } from '../apply-ui.mjs';
 import { APPLY_STATES } from '../apply-queue.mjs';
 import { parseBrief } from '../candidate-brief.mjs';
@@ -451,3 +451,26 @@ ok('the snapshot survives a restore, so a second undo is possible', existsSync(s
 
 rmSync(dir, { recursive: true, force: true });
 
+
+// -- La descrizione breve dell'annuncio --------------------------------------
+//
+// Ogni riga della lista mostra una frase su cosa sia il lavoro. Viene dal testo
+// dell'annuncio e non costa token, quindi vale per le righe valutate e per
+// quelle ancora ferme. Il rischio è che peschi l'apertura di facciata
+// dell'azienda invece del ruolo: è questo che i casi qui sotto sorvegliano.
+
+ok('salta l\'apertura sull\'azienda e prende la frase sul ruolo', /Applied AI team member/.test(
+  teaserFromJd('About Acme\nOur mission is to create reliable systems for everyone in the world.\nAs an Applied AI team member you will be a pre-sales architect for large enterprises.')));
+ok('legge anche un annuncio in italiano', /cerchiamo agenti di commercio/.test(
+  teaserFromJd('<p>Chi siamo</p><p>Per sviluppare la rete commerciale in Emilia-Romagna cerchiamo agenti di commercio abituati al campo.</p>')));
+ok('i tag HTML non finiscono nella frase', !/</.test(
+  teaserFromJd('<div class="x"><span>We are looking for a Product Support Specialist to work alongside our customers every day.</span></div>')));
+ok('le entità HTML tornano caratteri', !/&nbsp;|&amp;/.test(
+  teaserFromJd('<p>We&nbsp;are looking for a Growth&nbsp;Marketer &amp; strategist to lead the expansion into the Nordics.</p>')));
+ok('scarta le righe di rito legale', !/equal opportunit/i.test(
+  teaserFromJd('Acme is an equal opportunity employer and considers all applicants without regard to anything.\nYou will own the reporting pipeline and the weekly numbers for the whole team.')));
+eq('un annuncio vuoto non inventa niente', teaserFromJd(''), '');
+ok('la frase lunga viene troncata su una parola intera', (() => {
+  const t = teaserFromJd(`You will ${'lavorare con il gruppo '.repeat(20)}`, 80);
+  return t.length <= 81 && t.endsWith('…') && !t.includes('  ');
+})());

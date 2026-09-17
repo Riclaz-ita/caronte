@@ -41,10 +41,12 @@ import {
 } from './analyze.mjs';
 import { loadProfileCard, BRIEF_FILE } from './candidate-brief.mjs';
 import { recordSubmission } from './record-submission.mjs';
+import { MODEL as WEB_SEARCH_MODEL } from './web-search.mjs';
 import { spawnSync } from 'node:child_process';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import * as yaml from 'js-yaml';
+import { decodeEntities } from './providers/_html-entities.mjs';
 
 const parseYaml = yaml.load;
 
@@ -524,7 +526,7 @@ export function preflight(phaseId, stats, opts = {}) {
     return {
       ...base,
       cost: 'token — una richiesta con le ricerche web',
-      model: 'sonnet',
+      model: WEB_SEARCH_MODEL,
       affects: `${base.affects}, più una ricerca web con le query di portals.yml`,
       warning: [base.warning, 'La ricerca web trova molti annunci già chiusi: vengono controllati e scartati prima di entrare in coda.'].filter(Boolean).join(' '),
     };
@@ -990,6 +992,44 @@ export function caronteDoctor(root = getCareerOpsRoot()) {
   return { ready: missing.length === 0, missing };
 }
 
+/**
+ * One sentence saying what the job actually is, taken from the posting.
+ *
+ * The queue already stores `summary_line`, but that is the line for the top of
+ * the CV: it describes the candidate, not the role, and it only exists once the
+ * triage has run. Every row needs a sentence about the job, scored or not, so
+ * it comes out of the posting text here, at zero tokens.
+ *
+ * Postings open with company boilerplate ("About Acme", "Our mission is to..."),
+ * so the first sentence is almost never the one worth showing. The one that is
+ * addresses the reader or names the role: "As a Product Support Specialist, you
+ * will...", "In this role you'll...", "Ti occuperai di...". Failing that, the
+ * first sentence of real prose, which is still better than nothing.
+ */
+const ABOUT_THE_JOB = /\b(you'll|you will|you are|you're|as an? [a-z]|in this role|this role|we(?:'re| are)? (?:are )?(?:looking for|hiring|seeking)|cerchiamo|ricerchiamo|stiamo cercando|ti occuperai|si occuperà|la risorsa|il\/la candidat|entrerai|lavorerai)/i;
+/** Sentences about the company, not the job: they never answer "what is this work?" */
+const BOILERPLATE = /(cookie|privacy|equal opportunit|recruitment scam|fraudulent|non discrimin|our mission|we want ai|we believe|our commitment|unwavering|founded in \d{4}|backed by|series [a-e]\b|happy you're interested|our values)/i;
+
+export function teaserFromJd(text, max = 180) {
+  const flat = decodeEntities(String(text || '')
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]*>/g, ' '))
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')      // markdown links keep their words
+    .replace(/[*_`>#]+/g, ' ')
+    .replace(/ /g, ' ');
+
+  const sentences = flat
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((s) => s.replace(/\s+/g, ' ').trim())
+    .filter((s) => s.length >= 45 && !s.endsWith(':') && s.split(' ').length >= 7
+      && !/^[A-Z0-9 ,.'&-]+$/.test(s)                 // shouted headings
+      && !BOILERPLATE.test(s));
+
+  const pick = sentences.find((s) => ABOUT_THE_JOB.test(s)) || sentences[0] || '';
+  if (pick.length <= max) return pick;
+  return `${pick.slice(0, pick.lastIndexOf(' ', max) + 1 || max).trim()}…`;
+}
+
 function currentState() {
   const rows = readQueue(QUEUE);
   const stats = summarise(rows, jdExists, (slug) => existsSync(analysisPath(slug)));
@@ -1005,6 +1045,7 @@ function currentState() {
         slug: r.slug, url: r.url, company: r.company, role: r.role, location: r.location,
         archetype: r.archetype, level: r.level, score: r.score, summary_line: r.summary_line,
         pack: r.pack, apply: r.apply, jd: jdExists(r.slug), fit: fitOf(r.slug),
+        teaser: teaserFromJd(loadJd(r.slug)),
       }))
       .sort((a, b) => (b.score === '' ? -1 : Number(b.score)) - (a.score === '' ? -1 : Number(a.score))),
   };
@@ -1023,9 +1064,20 @@ export function createApp() {
         return res.end(html);
       }
 
-      // L'emblema. È l'unico file statico oltre alla pagina, quindi una rotta
-      // sola e nessuna cartella public. Se manca, la pagina resta leggibile:
-      // il nome sta scritto di fianco, l'immagine è decorativa.
+      // I caratteri stanno già nel repo, li usa il generatore di CV. Servirli da
+      // qui invece che da un CDN tiene il pannello funzionante senza rete e non
+      // racconta a nessuno che lo stai aprendo. Solo i file di fonts/, per nome
+      // esatto: il percorso non viene mai composto con quello che arriva.
+      const font = url.pathname.match(/^\/fonts\/([a-z0-9-]+\.woff2)$/);
+      if (req.method === 'GET' && font) {
+        const file = resolve(__dirname, 'fonts', font[1]);
+        if (!existsSync(file)) return json(res, 404, { error: 'carattere non trovato' });
+        res.writeHead(200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'max-age=604800' });
+        return res.end(readFileSync(file));
+      }
+
+      // L'emblema. Se manca, la pagina resta leggibile: il nome sta scritto di
+      // fianco, l'immagine è decorativa.
       if (req.method === 'GET' && url.pathname === '/caronte.jpg') {
         if (!existsSync(MARK)) return json(res, 404, { error: 'caronte.jpg non c\'è' });
         res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'max-age=86400' });

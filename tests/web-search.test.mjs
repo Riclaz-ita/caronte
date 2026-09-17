@@ -2,7 +2,7 @@
 // its answer may put in the pipeline, and that closed postings never get in.
 import { pass, fail } from './helpers.mjs';
 import {
-  webSearchArgs, buildWebSearchPrompt, isPostingUrl, parseWebResults, selectNew, keepOpen, enabledQueries, MAX_QUERIES,
+  webSearchArgs, MODEL, EFFORT, buildWebSearchPrompt, isPostingUrl, parseWebResults, selectNew, keepOpen, enabledQueries, MAX_QUERIES,
 } from '../web-search.mjs';
 import { judgeExtraction } from '../fetch-jds.mjs';
 import { normalizeUrlForDedup } from '../scan.mjs';
@@ -15,6 +15,14 @@ const eq = (label, a, b) => (JSON.stringify(a) === JSON.stringify(b) ? pass(labe
 // -- the worker can search and nothing else --
 const args = webSearchArgs('sonnet');
 eq('the only tool is WebSearch', args[args.indexOf('--tools') + 1], 'WebSearch');
+
+// -- il modello di serie --
+// La ricerca web decide quale link sia un annuncio singolo e quale una pagina
+// di risultati. È un giudizio, e un modello piccolo lo sbaglia abbastanza da
+// riempire la coda di spazzatura: il valore di serie è Opus 5, effort medio.
+const dis = webSearchArgs();
+eq('di serie gira su Opus 5', dis[dis.indexOf('--model') + 1], 'claude-opus-5');
+eq('di serie con effort medio', dis[dis.indexOf('--effort') + 1], 'medium');
 ok('no transcript kept', args.includes('--no-session-persistence'));
 ok('no MCP servers', args.includes('--strict-mcp-config'));
 ok('the prompt marks results as data', /EXTERNAL CONTENT/.test(buildWebSearchPrompt(['q'])));

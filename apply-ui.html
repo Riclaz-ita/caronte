@@ -6,304 +6,257 @@
 <title>Caronte</title>
 <style>
 /* --------------------------------------------------------------------------
-   Tokens
+   Caratteri
 
-   La tinta viene dall'emblema: grotta di ardesia verde-azzurra, acqua che
-   illumina da sotto, legno e ossa come unico caldo. Della grotta però
-   l'interfaccia prende solo la fascia in alto: il pannello si usa di giorno
-   alla scrivania, alla finestra, e PRODUCT.md scarta due volte la dashboard
-   scura. Carta pallida virata sul verde-acqua, non bianco; inchiostro di
-   ardesia, non nero. Tutti i neutri sono virati sulla stessa tinta (hue ~200)
-   del colore d'azione.
+   DM Sans, variabile, servita dal disco: gli stessi file che compongono il CV.
+   Niente CDN, così il pannello funziona senza rete e nessuno fuori di qui sa
+   che lo stai aprendo.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/dm-sans-latin.woff2') format('woff2');
+  font-weight: 100 1000; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/dm-sans-latin-ext.woff2') format('woff2');
+  font-weight: 100 1000; font-style: normal; font-display: swap;
+  unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
-   Un solo accento, acqua profonda, e solo per tre cose: l'azione principale,
-   la fase corrente, l'anello di focus. Mai decorazione. È tenuto a L 0.44
-   perché passi il 4.5:1 sia sulla carta sia sulla sua stessa velatura: il
-   mattone bruciato di prima si fermava a 3.6:1.
-   Il blocco d'errore non usa un secondo colore: usa l'inchiostro pieno e le
-   parole, perché lo stato deve leggersi anche senza distinguere i colori.
+/* --------------------------------------------------------------------------
+   Tinte
+
+   Dall'emblema: grotta di ardesia verde-azzurra, acqua che illumina da sotto.
+   Della grotta l'interfaccia prende solo la plancia in alto, che è l'unica
+   superficie scura: il pannello si usa di giorno, alla scrivania. Carta
+   pallida virata sul verde-acqua, inchiostro di ardesia, mai bianco e mai
+   nero. Un accento solo, acqua profonda, per tre cose: l'azione principale,
+   la fase scelta, l'anello di fuoco. Mai decorazione.
    -------------------------------------------------------------------------- */
 :root {
-  --paper:        oklch(0.977 0.006 200);
-  --paper-sunk:   oklch(0.952 0.010 200);
-  --paper-raised: oklch(0.992 0.004 200);
-  --rule:         oklch(0.882 0.013 200);
-  --rule-strong:  oklch(0.795 0.018 202);
-  --ink:          oklch(0.255 0.034 218);
-  --ink-soft:     oklch(0.455 0.028 212);
-  --ink-faint:    oklch(0.605 0.022 207);
+  --paper:        oklch(0.980 0.005 200);
+  --paper-sunk:   oklch(0.957 0.009 200);
+  --paper-raised: oklch(0.995 0.003 200);
+  --rule:         oklch(0.898 0.011 200);
+  --rule-strong:  oklch(0.812 0.016 202);
+  --ink:          oklch(0.250 0.034 218);
+  --ink-soft:     oklch(0.468 0.027 212);
+  --ink-faint:    oklch(0.622 0.020 207);
   --accent:       oklch(0.440 0.100 207);
-  --accent-press: oklch(0.370 0.092 209);
-  --accent-wash:  oklch(0.945 0.036 200);
+  --accent-press: oklch(0.368 0.092 209);
+  --accent-wash:  oklch(0.948 0.032 200);
 
-  /* La grotta. Vive solo nella fascia in alto, che è l'identità dell'app e
-     l'unica superficie scura della pagina. */
-  --deep:         oklch(0.228 0.046 220);
-  --deep-rule:    oklch(0.400 0.052 205);
-  --bone:         oklch(0.930 0.018 88);
-  --bone-soft:    oklch(0.748 0.022 196);
-  --glow:         oklch(0.845 0.105 191);
+  --deep:         oklch(0.214 0.044 221);
+  --deep-up:      oklch(0.268 0.046 219);
+  --deep-rule:    oklch(0.352 0.044 212);
+  --bone:         oklch(0.944 0.014 190);
+  --bone-soft:    oklch(0.735 0.024 198);
+  --glow:         oklch(0.852 0.108 191);
 
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 
-  /* Scala fissa, rapporto ~1.2. Niente clamp: la densità è voluta. */
   --t-xs:   0.75rem;
   --t-sm:   0.8125rem;
   --t-base: 0.9375rem;
   --t-md:   1.0625rem;
-  --t-lg:   1.3125rem;
-  --t-xl:   1.75rem;
+  --t-lg:   1.375rem;
+  --t-xl:   1.875rem;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur: 160ms;
+  --dur: 170ms;
+  --pad: clamp(1.25rem, 4vw, 2.5rem);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-
 html { color-scheme: light; }
 
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: var(--t-base)/1.55 var(--sans);
+  font: 400 var(--t-base)/1.55 var(--sans);
+  font-feature-settings: 'ss01';
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+.wrap { max-width: 74rem; margin: 0 auto; padding-inline: var(--pad); }
+
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
 }
 
-.wrap { max-width: 78rem; margin: 0 auto; padding: 0 1.5rem; }
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.014em; margin: 0; }
 
-/* --------------------------------------------------------------------------
-   Plancia — non si chiude mai
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   Plancia — fissa in alto, non si chiude mai
+   ========================================================================== */
 .board {
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 20;
   background: var(--deep);
   color: var(--bone);
-  border-bottom: 1px solid var(--deep-rule);
+  box-shadow: 0 1px 0 var(--deep-rule), 0 6px 20px -14px oklch(0.2 0.04 220 / 0.6);
 }
-
-.board-head {
-  display: flex; align-items: baseline; gap: 0.875rem;
-  padding: 0.5625rem 0 0.5rem;
-}
-.board-head h1 {
-  margin: 0;
-  font-size: var(--t-md);
-  font-weight: 640;
-  letter-spacing: -0.011em;
-  color: var(--bone);
-}
-
-/* L'emblema: l'immagine intera, nelle sue proporzioni 4:5. Il nome gli sta di
-   fianco, quindi è decorativa e l'alt resta vuoto: letta ad alta voce
-   raddoppierebbe la parola "Caronte". Sorgente JPEG a 512px per un riquadro da 36:
-   resta nitida sugli schermi densi. La fascia è cresciuta di due pixel per
-   farci stare il ritratto senza tagliarlo. */
-.mark {
-  align-self: center;
-  width: 2.25rem; height: 2.8125rem;
-  object-fit: cover;
-  border-radius: 5px;
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--glow) 32%, transparent), 0 1px 4px oklch(0.14 0.03 226 / 0.6);
-  margin-right: -0.125rem;
-}
-
-/* Dentro la fascia scura l'anello d'azione non si vedrebbe: lì il fuoco è la
-   luce dell'acqua. */
 .board :focus-visible { outline-color: var(--glow); }
-/* Il profilo. Sta sotto l'intestazione, chiuso: è materiale di consultazione,
-   non il lavoro del giorno, e aperto di default spingerebbe la plancia fuori
-   dallo schermo. */
-.io { border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
-/* Un solo controllo per tutto ciò che si apre in pagina. Prima ce n'erano due,
-   con due verbi diversi per lo stesso identico gesto: il profilo diceva
-   "apri", il gruppo degli scartati diceva "mostra". */
-.disclose {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 0.4375rem;
-  font: 600 var(--t-xs)/1 var(--sans);
-  letter-spacing: 0.07em; text-transform: uppercase;
-  padding: 0.4375rem 0.625rem;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  background: var(--accent-wash);
-  color: var(--accent);
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
-  white-space: nowrap;
-}
-/* Tinto a riposo, pieno sotto il dito: a riposo pieno griderebbe quanto il
-   bottone della fase, che è l'azione vera della pagina. */
-summary:hover .disclose {
-  background: var(--accent); border-color: var(--accent); color: var(--paper);
-}
-summary:active .disclose { background: var(--accent-press); border-color: var(--accent-press); }
 
-/* Il segno è fatto delle stesse righe da 1px di tutto il resto della pagina:
-   una croce che perde la gamba verticale quando il blocco è aperto. Nessun
-   glifo, nessuna icona importata, e si legge senza distinguere i colori.
-   Si muove solo la trasformazione, mai una proprietà di impaginazione. */
-.disclose-mark { position: relative; display: block; width: 0.625rem; height: 0.625rem; }
-.disclose-mark::before,
-.disclose-mark::after { content: ''; position: absolute; background: currentColor; }
-.disclose-mark::before { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-0.5px); }
-.disclose-mark::after {
+.crest { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0 0.5rem; }
+/* L'emblema nelle sue proporzioni 4:5. Il nome gli sta di fianco, quindi è
+   decorativo e l'alt resta vuoto: letto ad alta voce raddoppierebbe "Caronte". */
+.crest img {
+  width: 2rem; height: 2.5rem; object-fit: cover; border-radius: 4px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--glow) 30%, transparent);
+}
+.crest h1 { font-size: var(--t-md); font-weight: 650; color: var(--bone); }
+.crest .claim { font-size: var(--t-xs); color: var(--bone-soft); }
+.crest .spacer { flex: 1; }
+
+/* Le cinque fasi. La posizione porta il significato, la parola lo conferma,
+   il colore non informa. Scorre di lato sugli schermi stretti. */
+.track {
+  display: flex; gap: 0;
+  overflow-x: auto; scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  border-top: 1px solid var(--deep-rule);
+}
+.track::-webkit-scrollbar { display: none; }
+
+.step {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  font: inherit; color: var(--bone-soft); text-align: left;
+  flex: 1 0 auto; min-width: 8.5rem;
+  scroll-snap-align: start;
+  padding: 0.6875rem 1.125rem 0.75rem 0;
+  display: grid; gap: 0.1875rem;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.step:hover { color: var(--bone); }
+.step-top { display: flex; align-items: baseline; gap: 0.5rem; }
+.step-n {
+  font-size: var(--t-xs); font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.55;
+}
+.step-name { font-size: var(--t-sm); font-weight: 550; letter-spacing: -0.006em; }
+.step-sub { font-size: var(--t-xs); line-height: 1.35; opacity: 0.78; }
+.step-sub .now { font-weight: 600; color: var(--glow); opacity: 1; }
+/* Scelta: la barra piena sotto, e il nome in chiaro. Due segni, nessuno dei
+   due è il colore da solo. */
+.step[aria-pressed="true"] { color: var(--bone); border-bottom-color: var(--glow); }
+.step[aria-pressed="true"] .step-name { font-weight: 680; }
+.step[aria-pressed="true"] .step-n { opacity: 0.85; }
+.step:focus-visible { outline-offset: -3px; }
+
+/* ==========================================================================
+   Riga di servizio — profilo e ripristino, fuori dalla strada
+   ========================================================================== */
+.util { border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
+.util-in { display: flex; align-items: center; gap: 1.5rem; min-height: 2.625rem; }
+
+.link {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  font: 500 var(--t-sm)/1 var(--sans); color: var(--ink-soft);
+  padding: 0.5rem 0; display: inline-flex; align-items: center; gap: 0.4375rem;
+  transition: color var(--dur) var(--ease);
+}
+.link:hover { color: var(--ink); }
+.link[hidden] { display: none; }
+/* Un solo gesto, un solo vocabolario: la parola cambia con lo stato. */
+.link .chiuso, .link .aperto { display: none; }
+:not([open]) > summary .link .chiuso, [aria-expanded="false"] .chiuso { display: inline; }
+[open] > summary .link .aperto, [aria-expanded="true"] .aperto { display: inline; }
+
+/* Il segno di apertura: due righe da 1px, come tutto il resto della pagina.
+   La gamba verticale sparisce quando il blocco è aperto. Nessun glifo. */
+.caret { position: relative; display: block; width: 0.625rem; height: 0.625rem; }
+.caret::before, .caret::after { content: ''; position: absolute; background: currentColor; }
+.caret::before { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-0.5px); }
+.caret::after {
   top: 0; bottom: 0; left: 50%; width: 1px;
   transform: translateX(-0.5px) scaleY(1);
   transition: transform var(--dur) var(--ease);
 }
-details[open] .disclose-mark::after { transform: translateX(-0.5px) scaleY(0); }
+[open] > summary .caret::after, [aria-expanded="true"] .caret::after { transform: translateX(-0.5px) scaleY(0); }
 
-details .disclose .chiuso,
-details .disclose .aperto { display: none; }
-details:not([open]) > summary .disclose .chiuso { display: inline; }
-details[open] > summary .disclose .aperto { display: inline; }
+/* ==========================================================================
+   Profilo
+   ========================================================================== */
+.io { display: none; border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
+.io[data-open="yes"] { display: block; }
+.io-in { padding: 1.75rem 0 2.5rem; }
 
-/* Il contorno di fuoco sta dentro la riga: su una fascia a tutta larghezza un
-   anello esterno disegnerebbe un rettangolo grande quanto lo schermo. */
-summary:focus-visible { outline-offset: -3px; }
+.io-lead {
+  font-size: var(--t-md); line-height: 1.5; font-weight: 450;
+  max-width: 60ch; margin: 0 0 1.75rem;
+  letter-spacing: -0.008em;
+}
+.io-lead b { font-weight: 650; }
 
-.io > summary {
-  list-style: none; cursor: pointer;
-  min-height: 2.75rem;
-  padding: 0.5rem 0;
-  font-size: var(--t-sm); color: var(--ink-soft);
-  display: flex; align-items: center; gap: 0.5rem;
-  transition: color var(--dur) var(--ease);
-}
-.io > summary::-webkit-details-marker { display: none; }
-.io > summary:hover { color: var(--ink); }
-.io > summary b { font-weight: 620; color: var(--ink); }
+.io-grid { display: grid; grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr); gap: 0 2.5rem; align-items: start; }
 
-/* Colonne, non griglia: una griglia allinea le righe, e "Chi sono" lasciava
-   sotto di sé mezzo schermo vuoto perché la sua riga era alta quanto la
-   sezione più lunga. Le colonne impacchettano in verticale. */
-.io-corpo {
-  padding: 0.25rem 0 1.5rem;
-  columns: 19rem 3;
-  column-gap: 2.5rem;
+.io-tabs { display: flex; flex-direction: column; gap: 1px; }
+.io-tab {
+  appearance: none; border: 0; cursor: pointer; text-align: left;
+  font: 500 var(--t-sm)/1.3 var(--sans); color: var(--ink-soft);
+  background: none; padding: 0.5rem 0.625rem; border-radius: 5px;
+  display: flex; align-items: baseline; gap: 0.5rem;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-.io-sez { break-inside: avoid; margin-bottom: 1.5rem; }
-.io-sez h3 {
-  margin: 0 0 0.5rem;
-  font: 500 var(--t-xs)/1 var(--sans);
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
-  padding-bottom: 0.4375rem; border-bottom: 1px solid var(--rule-strong);
-}
-/* La sezione dei divieti si legge per prima, e si legge diversa: non è una
-   lista di qualità in meno, è il perimetro entro cui tutto il resto è vero. */
-.io-sez[data-peso="guardia"] h3 { color: var(--ink); border-bottom-color: var(--ink); }
-.io-sez[data-peso="guardia"] li::before { content: '✗'; }
-.io-sez p { margin: 0; font-size: var(--t-sm); line-height: 1.6; max-width: 62ch; }
-.io-sez ul { margin: 0; padding: 0; list-style: none; }
-.io-sez li {
-  font-size: var(--t-sm); line-height: 1.55;
-  padding-left: 1rem; text-indent: -1rem; margin-bottom: 0.375rem;
-}
-.io-sez li::before { content: '·'; display: inline-block; width: 1rem; text-indent: 0; color: var(--ink-soft); }
-.io-sez li b { font-weight: 620; }
+.io-tab:hover { background: var(--paper-raised); color: var(--ink); }
+.io-tab[aria-selected="true"] { background: var(--ink); color: var(--paper); font-weight: 600; }
+.io-tab .n { font-size: var(--t-xs); font-variant-numeric: tabular-nums; opacity: 0.6; margin-left: auto; }
 
-.board-head .claim {
-  font-size: var(--t-xs);
-  color: var(--bone-soft);
-  border-left: 1px solid var(--deep-rule);
-  padding-left: 0.625rem;
-  margin-left: 0.125rem;
+.io-panel h3 {
+  font-size: var(--t-base); font-weight: 650; margin-bottom: 0.875rem;
 }
-.board-head .sub {
-  font-size: var(--t-sm);
-  color: var(--bone-soft);
-}
-/* "Ripristina" è l'unico bottone della fascia e resta quieto anche lì. */
-.board-head button.quiet { color: var(--bone-soft); }
-.board-head button.quiet:hover:not(:disabled) {
-  background: oklch(0.32 0.05 216); color: var(--bone);
-}
-.board-head .spacer { flex: 1; }
-
-/* Rotaia delle fasi. La posizione porta il significato, il colore lo conferma. */
-.rail {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  overflow: hidden;
-}
-
-/* La casella è un bottone: azzero l'aspetto nativo e tengo il disegno. */
-.stage {
-  appearance: none;
-  font: inherit; color: inherit; text-align: left;
-  border: none; border-radius: 0;
-  background: var(--paper-raised);
-  padding: 0.75rem 0.875rem 0.8125rem;
-  display: flex; flex-direction: column; gap: 0.1875rem;
-  min-width: 0; cursor: pointer;
-  transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-}
-.stage:hover { background: var(--paper-sunk); }
-.stage[data-current="yes"] { background: var(--accent-wash); }
-.stage[data-current="yes"]:hover { background: oklch(0.925 0.042 200); }
-/* Quale casella comanda la barra qui sotto: una barra piena in alto, non solo
-   una sfumatura, perché lo stato non può dipendere dal colore. */
-.stage[aria-pressed="true"] { box-shadow: inset 0 3px 0 0 var(--ink); }
-.stage[aria-pressed="true"][data-current="yes"] { box-shadow: inset 0 3px 0 0 var(--accent); }
-.stage:focus-visible { outline-offset: -3px; }
-
-.stage-top { display: flex; align-items: baseline; gap: 0.5rem; }
-.stage-idx {
-  font: 600 var(--t-xs)/1 var(--mono);
-  color: var(--ink-faint);
-  letter-spacing: 0.04em;
-}
-.stage[data-current="yes"] .stage-idx { color: var(--accent); }
-.stage-name {
-  font-size: var(--t-sm); font-weight: 580;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.stage-count {
-  font: 400 var(--t-xs)/1.4 var(--mono);
+.io-panel p { margin: 0 0 0.875rem; font-size: var(--t-sm); line-height: 1.65; max-width: 62ch; color: var(--ink-soft); }
+.io-panel ul { margin: 0; padding: 0; list-style: none; max-width: 64ch; }
+.io-panel li {
+  font-size: var(--t-sm); line-height: 1.6;
+  padding: 0.5rem 0 0.5rem 1.125rem; text-indent: -1.125rem;
+  border-top: 1px solid var(--rule);
   color: var(--ink-soft);
 }
-/* "Prossimo" è scritto, non solo colorato. */
-.stage-flag {
-  font-size: var(--t-xs); font-weight: 620;
-  text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--accent);
+.io-panel li::before { content: '·'; display: inline-block; width: 1.125rem; text-indent: 0; color: var(--ink-faint); }
+.io-panel li b { font-weight: 640; color: var(--ink); }
+/* I divieti non sono qualità in meno: sono il perimetro entro cui tutto il
+   resto è vero. Segno diverso, parola diversa. */
+.io-panel[data-guard="yes"] li::before { content: '✗'; color: var(--ink); }
+
+@media (max-width: 52rem) {
+  .io-grid { grid-template-columns: 1fr; gap: 1.25rem; }
+  .io-tabs { flex-direction: row; flex-wrap: wrap; }
+  .io-tab .n { display: none; }
 }
 
-/* --------------------------------------------------------------------------
-   Barra azione
-   -------------------------------------------------------------------------- */
-.act {
-  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
-  padding: 0.875rem 1rem;
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule);
-  border-radius: 0 0 4px 4px;
-  margin-bottom: 2.25rem;
-}
-.act-say { font-size: var(--t-sm); color: var(--ink-soft); margin-right: auto; }
-.act-say b { color: var(--ink); font-weight: 600; }
+/* ==========================================================================
+   Pannello della fase
+   ========================================================================== */
+main { padding-bottom: 5rem; }
+
+.act { padding: 2.25rem 0 0; }
+.act-head { max-width: 58ch; margin-bottom: 1.375rem; }
+.act-head h2 { font-size: var(--t-xl); line-height: 1.15; letter-spacing: -0.026em; }
+.act-head p { margin: 0.5rem 0 0; font-size: var(--t-base); line-height: 1.55; color: var(--ink-soft); }
+
+.act-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 
 button {
   font: 550 var(--t-sm)/1 var(--sans);
-  padding: 0.5625rem 0.9375rem;
+  padding: 0.625rem 1rem;
   border: 1px solid var(--rule-strong);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--paper-raised);
   color: var(--ink);
   cursor: pointer;
@@ -315,204 +268,195 @@ button:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: no
 
 button.primary {
   background: var(--accent); border-color: var(--accent); color: var(--paper);
+  font-weight: 600; padding-inline: 1.25rem;
 }
 button.primary:hover:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
-button.primary:active:not(:disabled) { background: var(--accent-press); }
 button.primary:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-faint); }
 
-button.quiet { border-color: transparent; background: transparent; color: var(--ink-soft); padding-inline: 0.5rem; }
+button.quiet { border-color: transparent; background: transparent; color: var(--ink-soft); padding-inline: 0.625rem; }
 button.quiet:hover:not(:disabled) { background: var(--paper-sunk); color: var(--ink); }
 
-/* Stato "sta girando": il bottone lo dice a parole, non solo con uno spinner. */
 button[data-busy="yes"] { color: var(--ink-faint); }
 
-.qty { display: flex; align-items: center; gap: 0.4375rem; font-size: var(--t-sm); color: var(--ink-soft); }
-
-/* I filtri prendono tutta la larghezza sotto il bottone: una riga per
-   domanda, l'etichetta a sinistra sempre nella stessa colonna, così le
-   risposte si leggono incolonnate invece che a zig-zag. */
-/* Visibile solo a chi legge con uno screen reader: il campo ha un'etichetta
-   vera anche dove sullo schermo basta il testo dentro. */
-.sr {
-  position: absolute; width: 1px; height: 1px;
-  margin: -1px; padding: 0; overflow: hidden;
-  clip-path: inset(50%); white-space: nowrap;
+.qty { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--t-sm); color: var(--ink-soft); }
+.qty input {
+  width: 4.5rem;
+  font: 550 var(--t-sm)/1 var(--sans); font-variant-numeric: tabular-nums;
+  padding: 0.5625rem 0.625rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--paper-raised);
+  color: var(--ink);
 }
 
-.filtri { flex: 1 0 100%; display: grid; gap: 0.375rem; margin-top: 0.125rem; }
+/* I filtri: una riga per domanda, l'etichetta sempre nella stessa colonna,
+   così le risposte si leggono incolonnate invece che a zig-zag. */
+.filtri {
+  flex: 1 0 100%;
+  margin-top: 1.5rem; padding-top: 1.375rem;
+  border-top: 1px solid var(--rule);
+  display: grid; gap: 0.625rem;
+}
 .frow { display: flex; align-items: center; gap: 0.4375rem; flex-wrap: wrap; }
 .fname {
-  flex: 0 0 5.5rem;
+  flex: 0 0 5.25rem;
   font: 500 var(--t-xs)/1 var(--sans);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+  letter-spacing: 0.055em; text-transform: uppercase;
+  color: var(--ink-faint);
 }
 .chip {
   font: 500 var(--t-xs)/1 var(--sans);
-  padding: 0.375rem 0.625rem;
+  padding: 0.4375rem 0.75rem;
   border-radius: 999px;
+  border-color: var(--rule);
 }
-/* Scelto si vede dal pieno, non dalla tinta: chi non distingue i colori
-   legge lo stesso quali filtri sono attivi. */
-.chip[aria-pressed="true"] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
-}
+/* Scelto si vede dal pieno, non dalla tinta. */
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .chip[aria-pressed="true"]:hover { background: var(--ink); color: var(--paper); }
 
-.focus { display: flex; align-items: center; gap: 0.4375rem; flex: 1; min-width: 14rem; }
-.focus label { font-size: var(--t-sm); color: var(--ink-soft); }
+.focus { display: flex; flex: 1; min-width: 14rem; }
 .focus input {
-  flex: 1;
-  min-width: 0;
+  flex: 1; min-width: 0;
   font: 400 var(--t-sm)/1.3 var(--sans);
-  padding: 0.5rem 0.625rem;
-  border: 1px solid var(--rule-strong);
-  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
   background: var(--paper-raised);
   color: var(--ink);
 }
-.focus input::placeholder { color: var(--ink-faint, var(--ink-soft)); opacity: 0.7; }
-.qty input {
-  width: 4.25rem;
-  font: 500 var(--t-sm)/1 var(--mono);
-  padding: 0.5rem 0.5rem;
-  border: 1px solid var(--rule-strong);
-  border-radius: 4px;
-  background: var(--paper-raised);
-  color: var(--ink);
-}
+.focus input::placeholder { color: var(--ink-faint); }
 
-/* --------------------------------------------------------------------------
-   Conferma — in linea, non in una finestra modale
-   -------------------------------------------------------------------------- */
-.confirm {
+/* ==========================================================================
+   Conferma — in linea, mai una finestra sopra la pagina
+   ========================================================================== */
+.panel {
   border: 1px solid var(--ink);
-  border-radius: 4px;
-  margin-bottom: 2.25rem;
+  border-radius: 10px;
   background: var(--paper-raised);
-  overflow: hidden;
+  padding: 1.5rem;
+  margin-top: 2rem;
 }
-.confirm-head {
-  background: var(--ink); color: var(--paper);
-  padding: 0.5625rem 1rem;
-  font-size: var(--t-xs); font-weight: 640;
-  text-transform: uppercase; letter-spacing: 0.09em;
+.panel > .kicker {
+  font: 600 var(--t-xs)/1 var(--sans);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  display: block; margin-bottom: 0.625rem;
 }
-.confirm-body { padding: 1.125rem 1rem 1rem; }
-.confirm-body h3 { margin: 0 0 0.375rem; font-size: var(--t-md); font-weight: 620; }
-.confirm-body p { margin: 0 0 1rem; max-width: 68ch; color: var(--ink-soft); }
+.panel h3 { font-size: var(--t-lg); letter-spacing: -0.02em; }
+.panel > p { margin: 0.5rem 0 0; color: var(--ink-soft); max-width: 62ch; }
 
-.facts { border-top: 1px solid var(--rule); margin-bottom: 1.125rem; }
+.facts { margin: 1.375rem 0 0; display: grid; gap: 0; }
 .fact {
-  display: flex; gap: 1rem; align-items: baseline;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 1rem;
+  padding: 0.5625rem 0; border-top: 1px solid var(--rule);
   font-size: var(--t-sm);
 }
-.fact dt {
-  flex: 0 0 11rem; margin: 0;
-  color: var(--ink-faint);
-  text-transform: uppercase; font-size: var(--t-xs);
-  letter-spacing: 0.06em; font-weight: 600;
+.fact dt { margin: 0; color: var(--ink-faint); font-weight: 500; }
+.fact dd { margin: 0; min-width: 0; color: var(--ink-soft); }
+.fact dd b { color: var(--ink); font-weight: 620; }
+code {
+  font: 400 0.9em/1.6 var(--mono);
+  background: var(--paper-sunk); border: 1px solid var(--rule);
+  padding: 0.0625rem 0.3125rem; border-radius: 4px;
+  overflow-wrap: anywhere;
 }
-.fact dd { margin: 0; min-width: 0; }
-.fact dd code { font: 400 var(--t-xs)/1.7 var(--mono); background: var(--paper-sunk); padding: 0.0625rem 0.3125rem; border-radius: 3px; }
 
 .warn {
-  font-size: var(--t-sm);
-  padding: 0.625rem 0.8125rem;
+  margin-top: 1.25rem;
+  font-size: var(--t-sm); line-height: 1.55;
+  padding: 0.75rem 0.875rem;
   border: 1px solid var(--rule-strong);
   background: var(--paper-sunk);
-  border-radius: 4px;
-  margin-bottom: 1.125rem;
+  border-radius: 6px;
+  max-width: 68ch;
 }
 .warn b { font-weight: 640; }
 
-.confirm-actions { display: flex; gap: 0.625rem; align-items: center; }
+.panel-actions { display: flex; gap: 0.625rem; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; }
 
-/* --------------------------------------------------------------------------
-   Console
-   -------------------------------------------------------------------------- */
-.console { margin-bottom: 2.25rem; }
-.console-head {
-  display: flex; align-items: baseline; gap: 0.625rem;
-  font-size: var(--t-xs); font-weight: 620;
-  text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--ink-faint);
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 0.625rem;
-}
-.console-log {
-  font: 400 var(--t-xs)/1.65 var(--mono);
-  color: var(--ink-soft);
-  max-height: 13rem; overflow-y: auto;
-  white-space: pre-wrap; word-break: break-word;
-  padding-right: 0.5rem;
-}
-.console-log .cur { color: var(--ink); font-weight: 500; }
-
-/* --------------------------------------------------------------------------
-   Errore — inchiostro pieno e parole. Niente secondo colore.
-   -------------------------------------------------------------------------- */
-.fail { border: 2px solid var(--ink); border-radius: 4px; margin-bottom: 2.25rem; overflow: hidden; }
-.fail-head {
+/* L'errore non usa un secondo colore: usa l'inchiostro pieno e le parole. */
+.panel.fail { border-width: 2px; }
+.tags { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.tag {
+  font: 600 var(--t-xs)/1 var(--sans);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.3125rem 0.5rem; border-radius: 4px;
   background: var(--ink); color: var(--paper);
-  padding: 0.625rem 1rem;
-  display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
-  font-size: var(--t-xs); font-weight: 640;
-  text-transform: uppercase; letter-spacing: 0.09em;
 }
-.fail-head .tag {
-  border: 1px solid currentColor; border-radius: 2px;
-  padding: 0.0625rem 0.375rem;
-  letter-spacing: 0.06em;
-}
-.fail-body { padding: 1.125rem 1rem 1rem; background: var(--paper-raised); }
-.fail-body h3 { margin: 0 0 0.5rem; font-size: var(--t-md); font-weight: 620; max-width: 68ch; }
-.fail-body .say { margin: 0 0 1.125rem; max-width: 68ch; }
-.fail-body .hint { margin: 0 0 1.125rem; max-width: 68ch; color: var(--ink-soft); }
-.fail-body .hint b { color: var(--ink); font-weight: 620; }
+.tag.open { background: none; color: var(--ink-soft); border: 1px solid var(--rule-strong); }
 
-details.raw { margin-top: 1.125rem; border-top: 1px solid var(--rule); padding-top: 0.75rem; }
-details.raw summary {
-  cursor: pointer; font-size: var(--t-xs); font-weight: 620;
+details.raw { margin-top: 1.375rem; border-top: 1px solid var(--rule); padding-top: 0.875rem; }
+details.raw > summary {
+  cursor: pointer; list-style: none;
+  font: 600 var(--t-xs)/1 var(--sans);
   text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint);
 }
-details.raw summary:hover { color: var(--ink); }
+details.raw > summary::-webkit-details-marker { display: none; }
+details.raw > summary:hover { color: var(--ink); }
 details.raw pre {
   font: 400 var(--t-xs)/1.6 var(--mono);
   background: var(--paper-sunk); color: var(--ink-soft);
-  padding: 0.75rem; border-radius: 4px;
+  border: 1px solid var(--rule);
+  padding: 0.875rem; border-radius: 6px;
   max-height: 17rem; overflow: auto;
-  margin: 0.75rem 0 0; white-space: pre-wrap; word-break: break-word;
+  margin: 0.875rem 0 0; white-space: pre-wrap; word-break: break-word;
 }
 
-/* --------------------------------------------------------------------------
-   Elenco ruoli — righe su una rotaia, non riquadri
-   -------------------------------------------------------------------------- */
-.group { margin-bottom: 2.75rem; }
+/* ==========================================================================
+   Registro di esecuzione
+   ========================================================================== */
+.run { margin-top: 2rem; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.run-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.6875rem 1rem;
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--rule);
+  font: 600 var(--t-xs)/1 var(--sans);
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft);
+}
+/* Il battito dice "sta girando" a chi guarda; la parola lo dice a tutti. */
+.run-head .beat {
+  width: 0.4375rem; height: 0.4375rem; border-radius: 50%;
+  background: var(--ink-faint);
+}
+.run[data-live="yes"] .run-head .beat { background: var(--accent); animation: beat 1.4s var(--ease) infinite; }
+@keyframes beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.run-log {
+  font: 400 var(--t-xs)/1.7 var(--mono);
+  color: var(--ink-soft);
+  max-height: 12rem; overflow-y: auto;
+  white-space: pre-wrap; word-break: break-word;
+  padding: 0.75rem 1rem;
+}
+.run-log .cur { color: var(--ink); font-weight: 500; }
+
+/* ==========================================================================
+   Gli annunci
+   ========================================================================== */
+.group { margin-top: 3rem; }
+.group:first-child { margin-top: 2.75rem; }
 details.group > summary { cursor: pointer; list-style: none; }
 details.group > summary::-webkit-details-marker { display: none; }
-details.group > summary .group-head { border-bottom-color: var(--rule); }
+
 .group-head {
   display: flex; align-items: baseline; gap: 0.625rem;
-  padding-bottom: 0.5rem; margin-bottom: 0;
-  border-bottom: 1px solid var(--rule-strong);
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--ink);
 }
 .group-head h2 {
-  margin: 0; font-size: var(--t-sm); font-weight: 640;
-  text-transform: uppercase; letter-spacing: 0.08em;
+  font-size: var(--t-xs); font-weight: 650;
+  text-transform: uppercase; letter-spacing: 0.1em;
 }
-.group-head .n { font: 400 var(--t-xs)/1 var(--mono); color: var(--ink-faint); }
+.group-head .n {
+  font-size: var(--t-xs); font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+.group-head .link { margin-left: auto; padding-block: 0; }
 
 .row {
   display: grid;
-  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-  gap: 0 1rem;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  gap: 0 1.25rem;
   align-items: start;
   padding: 0.9375rem 0.5rem 0.9375rem 0;
   border-bottom: 1px solid var(--rule);
@@ -520,161 +464,138 @@ details.group > summary .group-head { border-bottom-color: var(--rule); }
 }
 .row:hover { background: var(--paper-raised); }
 
+/* Il voto, o la percentuale quando l'annuncio è stato letto per intero. Due
+   numeri sulla stessa riga sarebbero due verdetti e nessuno saprebbe a quale
+   credere: quando arriva la percentuale, il voto passa nel suggerimento. */
 .score {
-  font: 600 var(--t-md)/1.25 var(--mono);
-  text-align: right;
-  padding-top: 0.0625rem;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--t-lg); font-weight: 600; line-height: 1.15;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.03em;
+  text-align: right; padding-top: 0.0625rem;
 }
-.score[data-none="yes"] { color: var(--ink-faint); font-weight: 400; font-size: var(--t-sm); }
-/* Una percentuale ha due cifre e un simbolo: al corpo del voto sborderebbe. */
-.score[data-kind="fit"] { font-size: var(--t-sm); }
-.score[data-kind="blocked"] { font-size: var(--t-sm); font-weight: 400; color: var(--ink-soft); }
-
-/* Il verdetto della lettura approfondita. Sta sotto la riga, chiuso, e si
-   apre solo se lo chiedi: aperto su venti righe sarebbe un muro. */
-.verdetto { grid-column: 2 / -1; margin-top: 0.5rem; }
-.verdetto > summary {
-  font-size: var(--t-sm); color: var(--ink-soft);
-  cursor: pointer; list-style: none; width: fit-content;
-  border-bottom: 1px solid var(--rule-strong); padding-bottom: 0.0625rem;
-}
-.verdetto > summary::-webkit-details-marker { display: none; }
-.verdetto > summary:hover { color: var(--ink); }
-.verdetto[open] > summary { margin-bottom: 0.75rem; }
-.verdetto .sintesi { font-size: var(--t-sm); line-height: 1.55; margin: 0 0 0.75rem; max-width: 68ch; }
-
-.req { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); gap: 0 0.625rem; padding: 0.4375rem 0; border-top: 1px solid var(--rule); }
-/* Il segno è geometrico e la parola lo ripete: lo stato si legge anche senza
-   distinguere i colori, e si legge ad alta voce. */
-.req .mark { font: 400 var(--t-sm)/1.5 var(--mono); color: var(--ink-soft); text-align: center; }
-.req q { font-size: var(--t-sm); line-height: 1.5; quotes: '"' '"'; }
-.req .nota { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; margin-top: 0.125rem; }
-.req .nota b { font-weight: 620; color: var(--ink); }
-
-.agganci { margin-top: 0.875rem; border-top: 1px solid var(--rule-strong); padding-top: 0.625rem; }
-.agganci h4 { font: 500 var(--t-xs)/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 0.5rem; }
-.agganci li { font-size: var(--t-sm); line-height: 1.55; margin-bottom: 0.375rem; max-width: 68ch; }
-.agganci li span { color: var(--ink-soft); }
+.score[data-none="yes"] { font-size: var(--t-sm); font-weight: 400; color: var(--ink-faint); }
+.score[data-kind="fit"] { font-size: var(--t-md); }
+.score[data-kind="blocked"] { font-size: var(--t-sm); font-weight: 500; color: var(--ink-soft); }
 
 .who { min-width: 0; }
-.who .top { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.who .co {
-  font-weight: 640; font-size: var(--t-base);
-  color: inherit; text-decoration: none;
-  border-bottom: 1px solid var(--rule-strong);
-}
-.who .co:hover { border-bottom-color: var(--accent); color: var(--accent); }
-.who .role { font-size: var(--t-base); color: var(--ink-soft); }
+/* Il ruolo per primo, ed è la cosa più grande della riga: è quello che stai
+   cercando. Azienda e luogo vengono dopo, sulla riga sotto. */
+.who h3 { font-size: var(--t-md); line-height: 1.3; letter-spacing: -0.016em; }
 .who .meta {
-  font-size: var(--t-xs); color: var(--ink-faint);
+  display: flex; align-items: baseline; gap: 0.4375rem; flex-wrap: wrap;
   margin-top: 0.1875rem;
-  display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: baseline;
-}
-.who .meta .sep { color: var(--rule-strong); }
-.who .line {
   font-size: var(--t-sm); color: var(--ink-soft);
-  margin-top: 0.4375rem; max-width: 72ch;
+}
+.who .meta a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
+.who .meta a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.who .meta .sep { color: var(--rule-strong); }
+/* Una descrizione breve, presa dall'annuncio. Due righe al massimo: la terza
+   sarebbe già lettura, e per leggere c'è la tendina. */
+.who .teaser {
+  margin: 0.375rem 0 0; max-width: 72ch;
+  font-size: var(--t-sm); line-height: 1.55; color: var(--ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Ogni stato porta la parola. Il segno geometrico la raddoppia per chi
-   non distingue i colori; nessuno dei due è il colore. */
-.state {
-  display: inline-flex; align-items: center; gap: 0.375rem;
-  font-size: var(--t-xs); font-weight: 600;
-  letter-spacing: 0.03em;
-}
-.state::before {
-  content: ""; width: 0.5rem; height: 0.5rem;
-  border: 1.5px solid var(--ink-soft);
-}
-.state[data-k="queued"]::before    { background: var(--ink-soft); }
+/* Ogni stato porta la parola. Il segno la raddoppia per chi non distingue i
+   colori, e nessuno dei due è il colore. */
+.state { display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 600; font-size: var(--t-xs); }
+.state::before { content: ''; width: 0.5rem; height: 0.5rem; border: 1.5px solid var(--ink-soft); }
+.state[data-k="chosen"]::before    { background: var(--ink-soft); }
 .state[data-k="partial"]::before   { background: linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%); }
 .state[data-k="skipped"]::before   { border-radius: 50%; background: none; }
+.state[data-k="opened"]::before    { border-radius: 50%; background: var(--ink-soft); }
 .state[data-k="submitted"]::before { background: var(--ink); border-color: var(--ink); border-radius: 50%; }
 .state[data-k="dead"]::before      { background: repeating-linear-gradient(45deg, var(--ink-faint) 0 2px, transparent 2px 4px); }
 
-.pick { display: flex; gap: 0.3125rem; align-items: center; padding-top: 0.0625rem; }
-.pick button { padding: 0.4375rem 0.6875rem; font-size: var(--t-xs); }
+.pick { display: flex; gap: 0.375rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.pick button { padding: 0.4375rem 0.75rem; font-size: var(--t-xs); }
 .pick button.primary { background: var(--paper-raised); border-color: var(--accent); color: var(--accent); }
-.pick button.primary:hover:not(:disabled) { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-press); }
-.pick button[aria-pressed="true"] {
-  background: var(--ink); border-color: var(--ink); color: var(--paper);
+.pick button.primary:hover:not(:disabled) { background: var(--accent-wash); color: var(--accent-press); }
+.pick button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* La tendina: tutto il resto sta qui dentro, chiuso. Su venti righe, aperto,
+   sarebbe un muro. */
+.more { grid-column: 2 / -1; margin-top: 0.375rem; }
+.more > summary {
+  list-style: none; cursor: pointer; width: fit-content;
+  font: 500 var(--t-xs)/1 var(--sans); color: var(--ink-faint);
+  display: inline-flex; align-items: center; gap: 0.4375rem;
+  padding: 0.1875rem 0;
+  transition: color var(--dur) var(--ease);
 }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary:hover { color: var(--ink); }
+.more-body { padding-top: 0.875rem; max-width: 74ch; }
+.more-body .sintesi { margin: 0 0 1rem; font-size: var(--t-sm); line-height: 1.6; }
 
-/* --------------------------------------------------------------------------
-   Le fonti — righe su una rotaia, come i ruoli. Niente riquadri.
-   -------------------------------------------------------------------------- */
-.fonti-say { font-size: var(--t-sm); color: var(--ink-soft); margin: 0 0 1.5rem; max-width: 72ch; }
-.fonti-say b { color: var(--ink); font-weight: 620; }
+.pairs { display: grid; gap: 0; margin: 0 0 1rem; }
+.pair {
+  display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 0.75rem;
+  padding: 0.4375rem 0; border-top: 1px solid var(--rule);
+  font-size: var(--t-sm);
+}
+.pair dt { margin: 0; color: var(--ink-faint); }
+.pair dd { margin: 0; min-width: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pair dd a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in oklch, var(--accent) 35%, transparent); }
+.pair dd a:hover { border-bottom-color: var(--accent); }
 
+.req { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); gap: 0 0.625rem; padding: 0.5rem 0; border-top: 1px solid var(--rule); }
+.req .mark { font: 400 var(--t-sm)/1.5 var(--mono); color: var(--ink-soft); text-align: center; }
+.req q { font-size: var(--t-sm); line-height: 1.5; quotes: '"' '"'; }
+.req .nota { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; margin: 0.1875rem 0 0; }
+.req .nota b { font-weight: 640; color: var(--ink); }
+
+.agganci { margin-top: 1rem; border-top: 1px solid var(--rule-strong); padding-top: 0.75rem; }
+.agganci h4 { font: 500 var(--t-xs)/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.625rem; }
+.agganci ul { margin: 0; padding: 0; list-style: none; }
+.agganci li { font-size: var(--t-sm); line-height: 1.55; margin-bottom: 0.4375rem; }
+.agganci li span { color: var(--ink-soft); }
+
+/* ==========================================================================
+   Le fonti — chiuse, perché sono configurazione, non lavoro del giorno
+   ========================================================================== */
 .fonte {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 5.5rem 7.5rem;
-  gap: 0 1rem;
-  align-items: baseline;
-  padding: 0.5625rem 0.5rem 0.5625rem 0;
-  border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 1rem; align-items: baseline;
+  padding: 0.5rem 0; border-top: 1px solid var(--rule);
   font-size: var(--t-sm);
 }
-.fonte-nome { font-weight: 600; }
+.fonte-nome { font-weight: 550; }
 .fonte-esempi { color: var(--ink-faint); font-weight: 400; font-size: var(--t-xs); }
-.fonte-n { font: 400 var(--t-xs)/1.6 var(--mono); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-/* Come per i ruoli: la parola porta lo stato, il segno la raddoppia, il colore
-   non informa. "Mai" non è un errore, è un portale che non ha ancora risposto. */
-.fonte-esito { font-size: var(--t-xs); font-weight: 600; letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 0.375rem; }
-.fonte-esito::before { content: ""; width: 0.5rem; height: 0.5rem; border: 1.5px solid var(--ink-soft); }
-.fonte-esito[data-k="si"]::before { background: var(--ink); border-color: var(--ink); }
-.fonte-esito[data-k="no"]::before { border-radius: 50%; background: none; }
+.fonte-n { font-size: var(--t-xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 
-.nota-fonti {
-  margin: 1.75rem 0 0;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--rule-strong);
-  background: var(--paper-sunk);
-  border-radius: 4px;
-  font-size: var(--t-sm);
-  max-width: 72ch;
+.say { margin: 0.875rem 0 0; font-size: var(--t-sm); color: var(--ink-soft); max-width: 68ch; }
+
+/* ==========================================================================
+   Vuoto e caricamento
+   ========================================================================== */
+.blank { padding: 3rem 0 4rem; max-width: 56ch; }
+.blank h2 { font-size: var(--t-lg); letter-spacing: -0.02em; }
+.blank p { margin: 0.75rem 0 1.5rem; color: var(--ink-soft); }
+.blank ol { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.blank li {
+  counter-increment: s;
+  display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.5rem;
+  padding: 0.6875rem 0; border-top: 1px solid var(--rule);
+  font-size: var(--t-sm); color: var(--ink-soft);
 }
-.nota-fonti b { font-weight: 640; }
-.nota-fonti + .nota-fonti { margin-top: 0.625rem; }
-
-@media (max-width: 56rem) {
-  .fonte { grid-template-columns: minmax(0, 1fr) auto; }
-  .fonte-esito { grid-column: 1 / -1; margin-top: 0.25rem; }
+.blank li::before {
+  content: '0' counter(s);
+  font-variant-numeric: tabular-nums; color: var(--ink-faint);
 }
+.blank li b { color: var(--ink); font-weight: 620; }
 
-/* --------------------------------------------------------------------------
-   Stati vuoti — insegnano, non constatano
-   -------------------------------------------------------------------------- */
-.blank { padding: 3.5rem 0 4rem; max-width: 58ch; }
-.blank h2 { margin: 0 0 0.625rem; font-size: var(--t-lg); font-weight: 620; letter-spacing: -0.012em; }
-.blank p { margin: 0 0 1.125rem; color: var(--ink-soft); }
-.blank ol { margin: 0 0 1.5rem; padding-left: 1.25rem; color: var(--ink-soft); }
-.blank ol li { margin-bottom: 0.375rem; }
-.blank ol li b { color: var(--ink); font-weight: 600; }
+.skel { border-bottom: 1px solid var(--rule); padding: 1.125rem 0; display: grid; grid-template-columns: 3.25rem 1fr; gap: 1.25rem; }
+.skel i { display: block; height: 0.75rem; border-radius: 3px; background: var(--rule); }
+.skel i + i { margin-top: 0.5625rem; width: 58%; }
+.skel i:first-child { width: 2rem; margin-left: auto; }
 
-/* Scheletro di caricamento, non rotella in mezzo al contenuto */
-.skel { border-bottom: 1px solid var(--rule); padding: 0.9375rem 0; display: grid; grid-template-columns: 3.25rem 1fr; gap: 1rem; }
-.skel i { display: block; height: 0.6875rem; border-radius: 2px; background: var(--rule); }
-.skel i + i { margin-top: 0.5rem; width: 62%; }
-.skel i:first-child { width: 2.25rem; margin-left: auto; }
-
-footer {
-  border-top: 1px solid var(--rule);
-  padding: 1.5rem 0 3rem;
-  font-size: var(--t-xs); color: var(--ink-faint);
-  max-width: 72ch;
-}
-footer b { color: var(--ink-soft); font-weight: 620; }
-
-@media (max-width: 56rem) {
-  .rail { grid-template-columns: repeat(2, 1fr); }
-  .verdetto dt { flex-basis: auto; }
-  .row { grid-template-columns: 2.75rem minmax(0, 1fr); }
-  .pick { grid-column: 1 / -1; padding-top: 0.75rem; flex-wrap: wrap; }
-  .fact { flex-direction: column; gap: 0.1875rem; }
-  .fact dt { flex-basis: auto; }
+@media (max-width: 52rem) {
+  .row { grid-template-columns: 3rem minmax(0, 1fr); }
+  .pick { grid-column: 1 / -1; padding-top: 0.875rem; justify-content: flex-start; }
+  .fact, .pair { grid-template-columns: 1fr; gap: 0.125rem; }
+  .act-head h2 { font-size: var(--t-lg); }
 }
 </style>
 </head>
@@ -682,46 +603,35 @@ footer b { color: var(--ink-soft); font-weight: 620; }
 
 <header class="board">
   <div class="wrap">
-    <div class="board-head">
-      <img class="mark" src="/caronte.jpg" alt="" width="36" height="45">
+    <div class="crest">
+      <img src="/caronte.jpg" alt="" width="32" height="40">
       <h1>Caronte</h1>
       <span class="claim">L'ultimo passo lo fai tu</span>
-      <span class="sub" id="sub">carico…</span>
-      <span class="spacer"></span>
-      <button class="quiet" id="restore" hidden>Ripristina</button>
     </div>
+    <nav class="track" id="track" aria-label="Le cinque fasi"></nav>
   </div>
 </header>
 
-<section class="wrap">
-  <details class="io" id="io">
-    <summary>
-      <b>Il mio profilo</b>
-      <span>chi sei, cosa sai fare, cosa non puoi dichiarare</span>
-      <span class="disclose" aria-hidden="true">
-        <span class="chiuso">mostra</span><span class="aperto">nascondi</span>
-        <i class="disclose-mark"></i>
-      </span>
-    </summary>
-    <div class="io-corpo" id="io-corpo">carico…</div>
-  </details>
+<div class="util">
+  <div class="wrap util-in">
+    <button class="link" id="io-toggle" aria-expanded="false" aria-controls="io">
+      Il mio profilo <i class="caret" aria-hidden="true"></i>
+    </button>
+    <button class="link" id="restore" hidden>Ripristina la coda</button>
+  </div>
+</div>
+
+<section class="io" id="io" data-open="no">
+  <div class="wrap io-in" id="io-in">carico…</div>
 </section>
 
 <main class="wrap">
-  <div class="rail" id="rail" aria-label="Le quattro fasi"></div>
   <div id="setup"></div>
-  <div class="act" id="act"></div>
-
+  <section class="act" id="act"></section>
   <div id="confirm"></div>
-  <div id="console"></div>
+  <div id="run"></div>
   <div id="fail"></div>
   <div id="list"></div>
-
-  <footer>
-    <b>L'invio non avviene qui.</b> L'ultima fase apre l'annuncio in un browser vero
-    con i campi riempiti solo dove esiste una fonte, e si ferma. Il bottone di invio
-    lo premi tu, sul sito dell'azienda, dopo aver guardato.
-  </footer>
 </main>
 
 <script>
@@ -736,8 +646,8 @@ let state = null;
 let pending = null;   // conferma in attesa
 let poll = null;      // id dell'intervallo di polling
 let busy = false;
-// La fase su cui punta la barra azione. Parte da quella consigliata, ma la
-// plancia può spostarla su qualunque altra.
+// La fase su cui punta il pannello. Parte da quella consigliata, ma la plancia
+// può spostarla su qualunque altra.
 let selected = null;
 
 // Una casella, un numero. Due numeri per casella obbligavano a leggere invece
@@ -762,9 +672,8 @@ const RISK = {
  * Una parola sola per la località.
  *
  * "United States · Ireland · Spain · Australia · Japan · Brazil · Italy ·
- * Poland · ..." occupava due righe e non rispondeva alla sola domanda che conta:
- * ci arrivo da Milano? L'elenco completo resta, come suggerimento al passaggio
- * del mouse.
+ * Poland · ..." occupava due righe e non rispondeva alla sola domanda che
+ * conta: ci arrivo da Milano? L'elenco completo resta nella tendina.
  */
 function dove(loc) {
   const l = String(loc || '');
@@ -797,64 +706,62 @@ async function api(path, opts) {
 /**
  * Ogni casella della plancia sceglie la sua fase.
  *
- * Prima la barra mostrava solo il bottone del passo consigliato, e quello
- * rendeva irraggiungibili gli altri tre: non si poteva rilanciare una ricerca
- * finché c'erano annunci da valutare. Il consiglio resta, ma non è più un
- * cancello.
+ * Il consiglio resta — la fase consigliata porta scritto "adesso" — ma non è
+ * un cancello: prima si poteva solo fare il passo successivo, e così non si
+ * rilanciava una ricerca finché c'erano annunci da valutare.
  */
-function drawRail() {
+function drawTrack() {
   const s = state.stats;
-  $('rail').innerHTML = STAGES.map((st, i) => `
-    <button class="stage" data-stage="${esc(st.id)}"
-            data-current="${state.next === st.id ? 'yes' : 'no'}"
-            aria-pressed="${selected === st.id}">
-      <span class="stage-top">
-        <span class="stage-idx">0${i + 1}</span>
-        <span class="stage-name">${esc(st.name)}</span>
+  $('track').innerHTML = STAGES.map((st, i) => `
+    <button class="step" data-stage="${esc(st.id)}" aria-pressed="${selected === st.id}">
+      <span class="step-top">
+        <span class="step-n">0${i + 1}</span>
+        <span class="step-name">${esc(st.name)}</span>
       </span>
-      <span class="stage-count">${esc(st.count(s))}</span>
-      ${state.next === st.id ? '<span class="stage-flag">prossimo passo</span>' : ''}
+      <span class="step-sub">${esc(st.count(s))}${
+        state.next === st.id ? ' <span class="now">· adesso</span>' : ''
+      }</span>
     </button>`).join('');
 
   document.querySelectorAll('[data-stage]').forEach((b) => b.addEventListener('click', () => {
     selected = b.dataset.stage;
     $('confirm').innerHTML = '';
-    drawRail();
+    drawTrack();
     drawAct();
     // La lista cambia con la fase: su Cerca mostra le fonti, altrove i ruoli.
     drawList();
   }));
 }
 
-// Una frase che dice cosa succede, non il nome interno della fase.
+/**
+ * Una frase che dice cosa succede in questa fase.
+ *
+ * Costo, file toccati e rischio non stanno qui: stanno nella conferma, che è
+ * dove servono davvero. Ripeterli in ogni schermata li rendeva rumore.
+ */
 const SPIEGA = {
   search: () => {
     const n = quanti === null ? 5 : quanti;
-    const dove = focusLabels().length
-      ? ` fra quelli che parlano di: ${focusLabels().join(' + ')}`
-      : '';
     if (n === 0) return 'Con zero non importa niente. Scrivi quanti annunci vuoi cercare.';
-    const quanti_ = n === 1 ? 'un annuncio' : `${n} annunci`;
-    const posta = state.inbox >= n && n > 0
-      ? ` ${state.inbox} sono già in posta in arrivo: non riscansiona.`
-      : '';
-    return `Cerca ${quanti_}${dove}, uno per portale a turno. Non costa niente.${posta}`;
+    const etichette = focusLabels();
+    const dove = etichette.length ? `, fra quelli che parlano di ${etichette.join(', ')}` : '';
+    return `Cerca ${n === 1 ? 'un annuncio' : `${n} annunci`}${dove}, uno per portale a turno.`;
   },
   triage: (s) => {
     const n = quanti === null ? s.readyToTriage : quanti;
     if (n === 0) return 'Con zero non valuta niente. Scrivi quanti annunci vuoi valutare.';
     if (n === 1) return 'Dà un voto al primo annuncio della lista e scrive la sua riga di CV.';
-    return `Dà un voto a ${n} annunci e scrive la riga di CV per ognuno. Una richiesta sola per tutti.`;
+    return `Dà un voto a ${n} annunci e scrive la riga di CV per ognuno.`;
   },
   deep: (s) => {
     const n = quanti === null ? s.toAnalyse : Math.min(quanti, s.toAnalyse);
     if (s.toAnalyse === 0) return 'Nessun annuncio da leggere a fondo. Ci passano quelli con voto 3 o più.';
     if (n === 0) return 'Con zero non legge niente. Scrivi quanti annunci vuoi far leggere.';
-    if (n === 1) return 'Legge un annuncio per intero: requisiti citati, quanto ci sei vicino, cosa può dire la lettera. Una richiesta, quindi token.';
-    return `Legge ${n} annunci per intero, uno per richiesta. Token: si paga per annuncio, non a giro.`;
+    if (n === 1) return 'Legge un annuncio per intero: cosa chiede davvero, quanto ci sei vicino, cosa può dire la lettera.';
+    return `Legge ${n} annunci per intero: cosa chiedono davvero, quanto ci sei vicino, cosa può dire la lettera.`;
   },
-  packs:  (s) => `Prepara CV e lettera per ${s.packsTodo} annunci. Non costa niente.`,
-  form:   () => 'Apre il modulo compilato in una finestra del browser. Non invia.',
+  packs: (s) => `Prepara CV e lettera per ${s.packsTodo} annunci.`,
+  form: () => 'Apre il modulo già compilato in una finestra del browser, e si ferma lì.',
 };
 
 // I filtri pronti. Ogni voce elenca i modi in cui un annuncio può soddisfarla,
@@ -885,15 +792,20 @@ const FILTRI = [
   ] },
 ];
 
-// Quanti annunci valutare al prossimo giro. null vuol dire "tutti quelli
+// Quanti annunci trattare al prossimo giro. null vuol dire "tutti quelli
 // pronti": è il valore di partenza, non una scelta fatta.
 let quanti = null;
 
+// La ricerca web costa token, quindi si accende a mano a ogni giro.
+let cercaWeb = false;
+
 // Quali filtri sono spuntati. Sopravvive alla chiusura del browser: una
 // ricerca impostata bene non si reimposta ogni volta.
-let cercaWeb = false;   // ricerca web: costa token, quindi si accende a mano ogni volta
 let scelti = new Set();
 try { scelti = new Set(JSON.parse(localStorage.getItem('career-ops-filtri') || '[]')); } catch { scelti = new Set(); }
+
+let focus = '';
+try { focus = localStorage.getItem('career-ops-focus') || ''; } catch { focus = ''; }
 
 function ricorda() {
   try {
@@ -918,32 +830,24 @@ function focusLabels() {
   return [...dai, ...focus.split(',').map((t) => t.trim()).filter(Boolean)];
 }
 
-// Quello che l'utente ha scritto nel campo focus, anche quando il campo non è
-// sullo schermo: cambiare fase e tornare indietro non deve cancellarlo.
-let focus = '';
-try { focus = localStorage.getItem('career-ops-focus') || ''; } catch { focus = ''; }
-
-// L'aggancio sta fuori da ogni ridisegno: il blocco profilo vive nell'HTML e
-// non viene ricostruito a ogni aggiornamento della coda.
-$('io').addEventListener('toggle', () => { if ($('io').open) apriProfilo(); });
-
 function drawAct() {
   const id = selected || state.next || 'search';
   const phase = state.phases.find((p) => p.id === id);
+  const stage = STAGES.find((p) => p.id === id);
   const s = state.stats;
 
   const disponibili = id === 'triage' ? s.readyToTriage : s.toAnalyse;
   // Su Cerca il campo non ha tetto: quanti annunci esistano là fuori non si sa
-  // prima di cercarli, e il numero è una richiesta, non una selezione da una
-  // lista già nota. Sulle altre due il tetto è quello che c'è in coda.
+  // prima di cercarli. Sulle altre due il tetto è quello che c'è in coda.
   const qty = id === 'search'
-    ? `<span class="qty"><label for="lim">quanti</label>
+    ? `<span class="qty"><label for="lim">Quanti</label>
        <input id="lim" type="number" min="1" value="${quanti === null ? 5 : quanti}"></span>`
     : (id === 'triage' || id === 'deep') && disponibili > 0
-    ? `<span class="qty"><label for="lim">quanti</label>
+    ? `<span class="qty"><label for="lim">Quanti</label>
        <input id="lim" type="number" min="1" max="${Math.max(1, disponibili)}"
               value="${quanti === null ? Math.max(1, disponibili) : quanti}"></span>`
     : '';
+
   const foc = id === 'search'
     ? `<div class="filtri">
         ${FILTRI.map((f) => `
@@ -953,46 +857,48 @@ function drawAct() {
                 aria-pressed="${scelti.has(v.id)}">${esc(v.label)}</button>`).join('')}
           </div>`).join('')}
         <div class="frow">
-          <span class="fname">Altro</span>
+          <span class="fname">Parole</span>
           <span class="focus"><label class="sr" for="foc">altre parole da cercare</label>
             <input id="foc" type="text" value="${esc(focus)}"
-                   placeholder="altre parole: marketing, social — separale con la virgola"
+                   placeholder="marketing, social — separale con la virgola"
                    autocomplete="off" spellcheck="false"></span>
         </div>
         <div class="frow" role="group" aria-label="Ricerca web">
           <span class="fname">Web</span>
-          <button class="chip" data-web aria-pressed="${cercaWeb}">Anche ricerca web: Indeed e siti aziendali (usa token)</button>
+          <button class="chip" data-web aria-pressed="${cercaWeb}">Cerca anche sul web</button>
         </div>
       </div>`
     : '';
 
   $('act').innerHTML = `
-    <span class="act-say">${esc(SPIEGA[id](s))}</span>
-    ${qty}
-    <button class="primary" data-run="${esc(id)}">${esc(phase ? phase.label : id)}</button>
-    ${foc}`;
+    <div class="act-head">
+      <h2>${esc(stage ? stage.name : id)}</h2>
+      <p id="act-say">${esc(SPIEGA[id](s))}</p>
+    </div>
+    <div class="act-bar">
+      ${qty}
+      <button class="primary" data-run="${esc(id)}">${esc(phase ? phase.label : id)}</button>
+      ${foc}
+    </div>`;
+
+  const say = () => { $('act-say').textContent = SPIEGA[id](s); };
 
   const qEl = $('lim');
   if (qEl) {
     // Il campo arriva pieno. Chi ne vuole uno solo non deve prima cancellare
     // un numero a due cifre: al primo clic il valore è già selezionato.
     qEl.addEventListener('focus', () => qEl.select());
-    // Il mouseup che segue il clic annullerebbe la selezione appena fatta.
     qEl.addEventListener('mouseup', (e) => e.preventDefault());
     qEl.addEventListener('input', () => {
       quanti = qEl.value === '' ? null : Math.max(0, Number(qEl.value) || 0);
-      $('act').querySelector('.act-say').textContent = SPIEGA[id](s);
+      say();
     });
     qEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') askConfirm(id); });
   }
 
   const fEl = $('foc');
   if (fEl) {
-    fEl.addEventListener('input', () => {
-      focus = fEl.value;
-      ricorda();
-      $('act').querySelector('.act-say').textContent = SPIEGA.search(s);
-    });
+    fEl.addEventListener('input', () => { focus = fEl.value; ricorda(); say(); });
     fEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') askConfirm('search'); });
   }
 
@@ -1008,7 +914,7 @@ function drawAct() {
       if (scelti.has(key)) scelti.delete(key); else scelti.add(key);
       ricorda();
       b.setAttribute('aria-pressed', String(scelti.has(key)));
-      $('act').querySelector('.act-say').textContent = SPIEGA.search(s);
+      say();
     });
   });
 
@@ -1024,38 +930,81 @@ function drawAct() {
 // ---------------------------------------------------------------------------
 
 /**
- * Disegna il profilo la prima volta che lo apri.
+ * Il profilo, una sezione alla volta.
  *
- * Viene dal disco, non da un modello. Riassumerlo costerebbe token e, peggio,
- * introdurrebbe deriva proprio nella sezione dei divieti: "non programmo" è
- * una riga che non può ammorbidirsi in "profilo tecnico di base".
+ * Nove sezioni aperte insieme erano un muro di testo in tre colonne: si vedeva
+ * tutto e non si leggeva niente. Il riassunto sta in cima, sempre; il resto si
+ * apre una scheda per volta. Viene dal disco, non da un modello: riassumerlo
+ * costerebbe token e, peggio, farebbe deriva proprio nella sezione dei
+ * divieti, dove "non programmo" non può ammorbidirsi in "profilo tecnico".
  */
-let profiloCaricato = false;
+let profilo = null;
 
 async function apriProfilo() {
-  if (profiloCaricato) return;
-  profiloCaricato = true;
-  const box = $('io-corpo');
-  const { body, status } = await api('/api/profile');
-
-  if (status !== 200) {
-    profiloCaricato = false;
-    box.innerHTML = `<div class="io-sez"><p>${esc(body.error || 'Profilo non disponibile.')}</p></div>`;
-    return;
+  const box = $('io-in');
+  if (!profilo) {
+    const { body, status } = await api('/api/profile');
+    if (status !== 200) { box.innerHTML = `<p class="io-lead">${esc(body.error || 'Profilo non disponibile.')}</p>`; return; }
+    profilo = body;
   }
 
   // Il grassetto di markdown è l'unica formattazione che passa: serve a marcare
   // una parola dentro una riga, non ad aprire una porta all'HTML arbitrario.
   const forte = (t) => esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-  const guardia = (titolo) => /non posso|non puoi|manca/i.test(titolo);
+  const sezioni = profilo.sections || [];
+  // "Chi sono" è il riassunto: sta in cima e non si chiude.
+  const lead = sezioni.find((s) => s.prose && !s.points.length) || null;
+  const schede = sezioni.filter((s) => s !== lead);
 
-  box.innerHTML = body.sections.map((sez) => `
-    <div class="io-sez" data-peso="${guardia(sez.title) ? 'guardia' : 'normale'}">
-      <h3>${esc(sez.title)}</h3>
-      ${sez.prose ? `<p>${forte(sez.prose)}</p>` : ''}
-      ${sez.points.length ? `<ul>${sez.points.map((p) => `<li>${forte(p)}</li>`).join('')}</ul>` : ''}
-    </div>`).join('');
+  box.innerHTML = `
+    ${lead ? `<p class="io-lead">${forte(lead.prose)}</p>` : ''}
+    <div class="io-grid">
+      <div class="io-tabs" role="tablist" aria-label="Sezioni del profilo">
+        ${schede.map((s, i) => `
+          <button class="io-tab" role="tab" id="iotab-${i}" data-tab="${i}"
+                  aria-controls="iopan-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">
+            ${esc(s.title)}<span class="n">${s.points.length || ''}</span>
+          </button>`).join('')}
+      </div>
+      <div class="io-panes">
+        ${schede.map((s, i) => `
+          <div class="io-panel" role="tabpanel" id="iopan-${i}" aria-labelledby="iotab-${i}"
+               data-guard="${/non posso|non puoi|manca/i.test(s.title) ? 'yes' : 'no'}" ${i === 0 ? '' : 'hidden'}>
+            <h3>${esc(s.title)}</h3>
+            ${s.prose ? `<p>${forte(s.prose)}</p>` : ''}
+            ${s.points.length ? `<ul>${s.points.map((p) => `<li>${forte(p)}</li>`).join('')}</ul>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  const tabs = [...box.querySelectorAll('[data-tab]')];
+  const mostra = (i) => {
+    tabs.forEach((t, j) => {
+      t.setAttribute('aria-selected', String(i === j));
+      t.tabIndex = i === j ? 0 : -1;
+      $(`iopan-${j}`).hidden = i !== j;
+    });
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => mostra(i));
+    t.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      const next = (i + d + tabs.length) % tabs.length;
+      mostra(next);
+      tabs[next].focus();
+    });
+  });
 }
+
+$('io-toggle').addEventListener('click', () => {
+  const t = $('io-toggle');
+  const open = t.getAttribute('aria-expanded') !== 'true';
+  t.setAttribute('aria-expanded', String(open));
+  $('io').dataset.open = open ? 'yes' : 'no';
+  if (open) apriProfilo();
+});
 
 // ---------------------------------------------------------------------------
 // Conferma
@@ -1079,23 +1028,21 @@ async function askConfirm(phaseId, slug) {
 function drawConfirm(p) {
   $('fail').innerHTML = '';
   $('confirm').innerHTML = `
-    <section class="confirm" role="alertdialog" aria-labelledby="ct">
-      <div class="confirm-head">Conferma prima di procedere</div>
-      <div class="confirm-body">
-        <h3 id="ct">${esc(p.label)}</h3>
-        <p>${esc(p.blurb)}</p>
-        <dl class="facts">
-          <div class="fact"><dt>Su cosa agisce</dt><dd>${esc(p.affects)}</dd></div>
-          <div class="fact"><dt>File che tocca</dt><dd>${(p.writes || []).map((w) => `<code>${esc(w)}</code>`).join(' ')}</dd></div>
-          <div class="fact"><dt>Costo</dt><dd>${esc(p.cost || '—')}${p.model ? ` · modello <b>${esc(p.model)}</b>` : ''}</dd></div>
-          <div class="fact"><dt>Rischio</dt><dd>${esc(RISK[p.risk] || p.risk || '—')}</dd></div>
-          <div class="fact"><dt>Si torna indietro</dt><dd>${p.reversible === false ? 'No' : esc(p.rollback || 'Sì')}</dd></div>
-        </dl>
-        ${p.warning ? `<div class="warn"><b>Attenzione.</b> ${esc(p.warning)}</div>` : ''}
-        <div class="confirm-actions">
-          <button class="primary" id="go">Procedi</button>
-          <button id="no">Annulla</button>
-        </div>
+    <section class="panel" role="alertdialog" aria-labelledby="ct">
+      <span class="kicker">Conferma prima di procedere</span>
+      <h3 id="ct">${esc(p.label)}</h3>
+      <p>${esc(p.blurb)}</p>
+      <dl class="facts">
+        <div class="fact"><dt>Su cosa agisce</dt><dd>${esc(p.affects)}</dd></div>
+        <div class="fact"><dt>File che tocca</dt><dd>${(p.writes || []).map((w) => `<code>${esc(w)}</code>`).join(' ')}</dd></div>
+        <div class="fact"><dt>Costo</dt><dd>${esc(p.cost || '—')}${p.model ? ` · modello <b>${esc(p.model)}</b>` : ''}</dd></div>
+        <div class="fact"><dt>Rischio</dt><dd>${esc(RISK[p.risk] || p.risk || '—')}</dd></div>
+        <div class="fact"><dt>Si torna indietro</dt><dd>${p.reversible === false ? 'No' : esc(p.rollback || 'Sì')}</dd></div>
+      </dl>
+      ${p.warning ? `<div class="warn"><b>Attenzione.</b> ${esc(p.warning)}</div>` : ''}
+      <div class="panel-actions">
+        <button class="primary" id="go">Procedi</button>
+        <button class="quiet" id="no">Annulla</button>
       </div>
     </section>`;
   $('go').addEventListener('click', go);
@@ -1123,7 +1070,7 @@ async function go() {
 
   const { body, status } = await api('/api/run', { phase: req.phase, limit: req.limit, focus: req.focus, slug: req.slug, web: req.web, confirm: true });
   if (!body.runId) {
-    if (status >= 400) $('fail').textContent = body.error || 'La fase non è partita.';
+    if (status >= 400) drawNote(body.error || 'La fase non è partita.');
     busy = false;
     return refresh();
   }
@@ -1134,7 +1081,7 @@ function watch(runId) {
   clearInterval(poll);
   poll = setInterval(async () => {
     const { body } = await api(`/api/run/${runId}`);
-    drawConsole(body);
+    drawRun(body);
     if (body.status === 'running') return;
     clearInterval(poll);
     busy = false;
@@ -1143,49 +1090,51 @@ function watch(runId) {
   }, 700);
 }
 
-function drawConsole(run) {
+function drawRun(run) {
   const phase = state.phases.find((p) => p.id === run.phase);
   const lines = run.lines || [];
-  const word = run.status === 'running' ? 'in corso' : run.status === 'done' ? 'finito' : 'fermato';
-  $('console').innerHTML = `
-    <section class="console">
-      <div class="console-head">
-        <span>${esc(phase ? phase.label : run.phase)}</span>
-        <span>·</span>
-        <span>${word}</span>
+  const live = run.status === 'running';
+  const word = live ? 'in corso' : run.status === 'done' ? 'finito' : 'fermato';
+  $('run').innerHTML = `
+    <section class="run" data-live="${live ? 'yes' : 'no'}">
+      <div class="run-head">
+        <span class="beat" aria-hidden="true"></span>
+        <span>${esc(phase ? phase.label : run.phase)} · ${word}</span>
       </div>
-      <div class="console-log" id="clog">${lines.map((l, i) =>
-        `<span class="${i === lines.length - 1 && run.status === 'running' ? 'cur' : ''}">${esc(l)}</span>`
+      <div class="run-log" id="rlog">${lines.map((l, i) =>
+        `<span class="${i === lines.length - 1 && live ? 'cur' : ''}">${esc(l)}</span>`
       ).join('\n')}</div>
     </section>`;
-  const log = $('clog');
+  const log = $('rlog');
   if (log) log.scrollTop = log.scrollHeight;
+}
+
+/** Un avviso breve, per quello che non merita il blocco d'errore intero. */
+function drawNote(text) {
+  $('fail').innerHTML = `<section class="panel" role="status"><p>${esc(text)}</p></section>`;
 }
 
 function drawFail(e) {
   if (!e) return;
   $('fail').innerHTML = `
-    <section class="fail" role="alert">
-      <div class="fail-head">
-        <span>Si è fermato</span>
-        <span class="tag">${e.blocking ? 'blocca il resto' : 'non blocca il resto'}</span>
-        <span class="tag">fase: ${esc(e.phaseLabel)}</span>
-        ${e.step ? `<span class="tag">passo: ${esc(e.step)}</span>` : ''}
+    <section class="panel fail" role="alert">
+      <div class="tags">
+        <span class="tag">Si è fermato</span>
+        <span class="tag open">${e.blocking ? 'blocca il resto' : 'non blocca il resto'}</span>
+        <span class="tag open">${esc(e.phaseLabel)}${e.step ? ` · ${esc(e.step)}` : ''}</span>
       </div>
-      <div class="fail-body">
-        <h3>${esc(e.explain)}</h3>
-        <p class="say">${esc(e.message)}</p>
-        <dl class="facts">
-          <div class="fact"><dt>File coinvolti</dt><dd>${(e.files || []).map((f) => `<code>${esc(f)}</code>`).join(' ') || '—'}</dd></div>
-        </dl>
-        <p class="hint"><b>Cosa conviene fare.</b> ${esc(e.hint)}</p>
-        <div class="confirm-actions">
-          ${(e.actions || []).includes('riprova') ? `<button class="primary" data-fix="riprova">Riprova</button>` : ''}
-          ${(e.actions || []).includes('ripristina') ? `<button data-fix="ripristina">Ripristina</button>` : ''}
-          <button class="quiet" data-fix="chiudi">Chiudi</button>
-        </div>
-        <details class="raw"><summary>Log completo</summary><pre>${esc(e.output || '')}</pre></details>
+      <h3>${esc(e.explain)}</h3>
+      <p>${esc(e.message)}</p>
+      <dl class="facts">
+        <div class="fact"><dt>File coinvolti</dt><dd>${(e.files || []).map((f) => `<code>${esc(f)}</code>`).join(' ') || '—'}</dd></div>
+        <div class="fact"><dt>Cosa conviene fare</dt><dd>${esc(e.hint)}</dd></div>
+      </dl>
+      <div class="panel-actions">
+        ${(e.actions || []).includes('riprova') ? '<button class="primary" data-fix="riprova">Riprova</button>' : ''}
+        ${(e.actions || []).includes('ripristina') ? '<button data-fix="ripristina">Ripristina</button>' : ''}
+        <button class="quiet" data-fix="chiudi">Chiudi</button>
       </div>
+      <details class="raw"><summary>Log completo</summary><pre>${esc(e.output || '')}</pre></details>
     </section>`;
 
   document.querySelectorAll('[data-fix]').forEach((b) => b.addEventListener('click', () => {
@@ -1203,17 +1152,10 @@ async function askRestore() {
 }
 
 // ---------------------------------------------------------------------------
-// Ruoli
+// Gli annunci
 // ---------------------------------------------------------------------------
 
 // L'ordine è quello dell'attenzione: prima ciò che aspetta te.
-//
-// Non c'è più un gruppo "Fuori". Ci finivano tre cose diverse — quello che
-// avevi ignorato tu, quello che il filtro di ricerca aveva messo da parte, e
-// ogni annuncio con voto sotto il 3 — e delle tre solo la prima era una tua
-// decisione. Il filtro non tocca più niente (sta all'import), e un voto basso
-// ora resta in "Da decidere" col suo numero accanto: il punteggio si legge,
-// la riga non sparisce. "Ignorati" contiene solo ciò che hai ignorato tu.
 const GROUPS = [
   { key: 'decide',  title: 'Da decidere' },
   { key: 'chosen',  title: 'Scelti' },
@@ -1229,11 +1171,10 @@ function bucket(r) {
 }
 
 function drawList() {
-  // La pagina Cerca serve a cercare. Gli annunci con i loro bottoni — mi
-  // candido, solo i documenti, ignoro — sono decisioni, e una decisione si
-  // prende dopo aver letto un punteggio: vivono da Valuta in poi. Qui sotto
-  // stanno le fonti, che è l'unica cosa che riguardi la ricerca.
-  if ((selected || state.next || 'search') === 'search') return drawSources();
+  // La schermata Cerca serve a cercare. Gli annunci con i loro bottoni sono
+  // decisioni, e una decisione si prende dopo aver letto un punteggio: vivono
+  // da Valuta in poi.
+  if ((selected || state.next || 'search') === 'search') return drawSearchList();
 
   if (!state.rows.length) return drawBlank();
 
@@ -1241,26 +1182,25 @@ function drawList() {
   state.rows.forEach((r) => by[bucket(r)].push(r));
 
   $('list').innerHTML = GROUPS.filter((g) => by[g.key].length).map((g) => {
-    // Lo stesso controllo del profilo: un gesto, un vocabolario.
-    const disclose = g.key === 'skipped'
-      ? `<span class="disclose" aria-hidden="true">
-           <span class="chiuso">mostra</span><span class="aperto">nascondi</span>
-           <i class="disclose-mark"></i>
-         </span>`
-      : '';
-    const head = `<div class="group-head"><h2>${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${disclose}</div>`;
+    const head = `<div class="group-head"><h2>${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${
+      g.key === 'skipped' ? '<span class="link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>' : ''
+    }</div>`;
     const body = by[g.key].map(rowHtml).join('');
     return g.key === 'skipped'
       ? `<details class="group"><summary>${head}</summary>${body}</details>`
       : `<section class="group">${head}${body}</section>`;
   }).join('');
 
+  wireRows();
+}
+
+function wireRows() {
   document.querySelectorAll('[data-decide]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true;
     const { body, status } = await api('/api/decide', { slug: b.dataset.slug, decision: b.dataset.decide });
-    if (status !== 200) $('fail').textContent = body.error || 'La decisione non è stata registrata.';
-    else if (body.tracker && body.tracker.error) $('fail').textContent = `Segnata come inviata, ma il tracker non è stato aggiornato: ${body.tracker.error}`;
-    else if (body.tracker && body.tracker.num) $('fail').textContent = `Registrata nel tracker come #${body.tracker.num}: da lì partono follow-up e statistiche.`;
+    if (status !== 200) drawNote(body.error || 'La decisione non è stata registrata.');
+    else if (body.tracker && body.tracker.error) drawNote(`Segnata come inviata, ma il tracker non è stato aggiornato: ${body.tracker.error}`);
+    else if (body.tracker && body.tracker.num) drawNote(`Registrata nel tracker come #${body.tracker.num}.`);
     refresh();
   }));
 
@@ -1269,8 +1209,8 @@ function drawList() {
     askConfirm('form', b.dataset.form);
   }));
 
-  document.querySelectorAll('[data-lettura]').forEach((d) => d.addEventListener('toggle', () => {
-    if (d.open) apriLettura(d);
+  document.querySelectorAll('[data-more]').forEach((d) => d.addEventListener('toggle', () => {
+    if (d.open) apriDettagli(d);
   }));
 }
 
@@ -1285,9 +1225,7 @@ function drawList() {
 function azioni(r) {
   const scored = r.score !== '' && r.score !== null;
 
-  if (r.apply === 'skipped') {
-    return `<button data-decide="apply" data-slug="${esc(r.slug)}">Rimetti in gioco</button>`;
-  }
+  if (r.apply === 'skipped') return `<button data-decide="apply" data-slug="${esc(r.slug)}">Rimetti in gioco</button>`;
   // Inviata o chiusa: nessun bottone. Non si torna indietro con un click.
   if (r.apply === 'submitted' || r.apply === 'dead') return '';
   if (!scored) return '';
@@ -1295,16 +1233,16 @@ function azioni(r) {
   // Form aperto: l'unica domanda che resta è se l'hai mandata.
   if (r.apply === 'opened') {
     return `
-    <button class="primary" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>
-    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}">Non inviata</button>`;
+      <button class="primary" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>
+      <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}">Non inviata</button>`;
   }
   const canOpen = r.apply === 'chosen' && (r.pack === 'built' || r.pack === 'jd_failed');
 
   return `
     <button class="primary" data-decide="apply" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'chosen'}">Candidati</button>
-    <button data-decide="partial" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'partial'}">Solo documenti</button>
-    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'skipped'}">Ignora</button>
     ${canOpen ? `<button data-form="${esc(r.slug)}">Apri il form</button>` : ''}
+    <button class="quiet" data-decide="partial" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'partial'}">Solo documenti</button>
+    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'skipped'}">Ignora</button>
     ${r.apply === 'chosen' || r.apply === 'partial' ? `<button class="quiet" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>` : ''}`;
 }
 
@@ -1314,64 +1252,79 @@ function azioni(r) {
 function verdetto(r) {
   if (!r.fit) {
     const none = r.score === '' || r.score === null;
-    return `<div class="score" data-none="${none ? 'yes' : 'no'}">${none ? '' : esc(Number(r.score).toFixed(1))}</div>`;
+    return `<div class="score" data-none="${none ? 'yes' : 'no'}">${none ? '—' : esc(Number(r.score).toFixed(1))}</div>`;
   }
   const voto = r.score === '' ? '' : ` · voto ${Number(r.score).toFixed(1)}`;
   if (r.fit.blocked) {
-    return `<div class="score" data-none="no" data-kind="blocked"
-      title="Requisito bloccante non soddisfatto${esc(voto)}">no</div>`;
+    return `<div class="score" data-none="no" data-kind="blocked" title="Requisito bloccante non soddisfatto${esc(voto)}">no</div>`;
   }
-  return `<div class="score" data-none="no" data-kind="fit"
-    title="${r.fit.total} requisiti letti${esc(voto)}">${r.fit.percent}%</div>`;
+  return `<div class="score" data-none="no" data-kind="fit" title="${r.fit.total} requisiti letti${esc(voto)}">${r.fit.percent}%</div>`;
 }
 
 const SEGNO = {
-  soddisfatto:        { mark: '●', parola: 'sì' },
-  parziale:           { mark: '◐', parola: 'in parte' },
-  'non soddisfatto':  { mark: '○', parola: 'no' },
+  soddisfatto:       { mark: '●', parola: 'sì' },
+  parziale:          { mark: '◐', parola: 'in parte' },
+  'non soddisfatto': { mark: '○', parola: 'no' },
 };
 
+/** Cosa c'è da sapere in più: una riga, e la tendina la dice. */
+function apertura(r) {
+  if (r.fit && !r.fit.blocked) return `Perché ${r.fit.percent}% e cosa chiede`;
+  if (r.fit && r.fit.blocked) return `Non raggiungibile: ${r.fit.blockers[0] || 'requisito bloccante'}`;
+  return 'Dettagli';
+}
+
 function rowHtml(r) {
-  const state_ = STATE_WORD[r.apply];
+  const parola = STATE_WORD[r.apply];
   const luogo = dove(r.location);
   return `
   <article class="row">
     ${verdetto(r)}
     <div class="who">
-      <div class="top">
-        <a class="co" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.company || 'Azienda ignota')}</a>
-        <span class="role">${esc(r.role || 'ruolo ignoto')}</span>
-      </div>
+      <h3>${esc(r.role || 'Ruolo non indicato')}</h3>
       <div class="meta">
-        ${luogo ? `<span title="${esc(r.location)}">${esc(luogo)}</span>` : ''}
-        ${!r.jd ? `${luogo ? '<span class="sep">/</span>' : ''}<span>non leggibile</span>` : ''}
-        ${state_ ? `${luogo || !r.jd ? '<span class="sep">/</span>' : ''}<span class="state" data-k="${esc(r.apply)}">${esc(state_)}</span>` : ''}
+        <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.company || 'Azienda ignota')}</a>
+        ${luogo ? `<span class="sep">·</span><span title="${esc(r.location)}">${esc(luogo)}</span>` : ''}
+        ${parola ? `<span class="sep">·</span><span class="state" data-k="${esc(r.apply)}">${esc(parola)}</span>` : ''}
       </div>
-      ${r.summary_line && r.summary_line !== 'n/a' ? `<p class="line">${esc(r.summary_line)}</p>` : ''}
+      ${r.teaser ? `<p class="teaser">${esc(r.teaser)}</p>` : ''}
     </div>
     <div class="pick">${azioni(r)}</div>
-    ${r.fit ? `
-    <details class="verdetto" data-lettura="${esc(r.slug)}">
-      <summary>${r.fit.blocked
-        ? `Non raggiungibile: ${esc(r.fit.blockers[0] || 'requisito bloccante')}`
-        : `Perché ${r.fit.percent}% — leggi i ${r.fit.total} requisiti`}</summary>
-      <div class="lettura">Apro…</div>
-    </details>` : ''}
+    <details class="more" data-more="${esc(r.slug)}" data-fit="${r.fit ? 'yes' : 'no'}">
+      <summary>${esc(apertura(r))} <i class="caret" aria-hidden="true"></i></summary>
+      <div class="more-body">carico…</div>
+    </details>
   </article>`;
 }
 
 /**
- * Load one analysis the first time its block is opened.
+ * La tendina di una riga, riempita quando la apri.
  *
- * Twenty analyses shipped with the board would be a payload nobody reads; one
- * fetch on demand is the same data at the moment it is wanted.
+ * Venti analisi spedite insieme alla plancia sarebbero un carico che nessuno
+ * legge; una richiesta a richiesta sono gli stessi dati nel momento in cui li
+ * vuoi. Quello che non richiede il disco — sede per esteso, riga di CV, link —
+ * si disegna subito.
  */
-async function apriLettura(det) {
-  const box = det.querySelector('.lettura');
+async function apriDettagli(det) {
+  const box = det.querySelector('.more-body');
   if (det.dataset.caricata === 'yes') return;
   det.dataset.caricata = 'yes';
-  const { body, status } = await api(`/api/analysis/${encodeURIComponent(det.dataset.lettura)}`);
-  if (status !== 200) { box.textContent = 'Questa analisi non si trova più sul disco.'; return; }
+
+  const r = state.rows.find((x) => x.slug === det.dataset.more);
+  if (!r) { box.textContent = 'Questa riga non è più in coda.'; return; }
+  const base = `
+    <dl class="pairs">
+      ${r.location ? `<div class="pair"><dt>Sede</dt><dd>${esc(r.location)}</dd></div>` : ''}
+      ${r.level ? `<div class="pair"><dt>Livello</dt><dd>${esc(r.level)}</dd></div>` : ''}
+      ${r.summary_line && r.summary_line !== 'n/a' ? `<div class="pair"><dt>Riga di CV</dt><dd>${esc(r.summary_line)}</dd></div>` : ''}
+      ${!r.jd ? '<div class="pair"><dt>Testo</dt><dd>l\'annuncio non si è lasciato scaricare</dd></div>' : ''}
+      <div class="pair"><dt>Annuncio</dt><dd><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></dd></div>
+    </dl>`;
+
+  if (det.dataset.fit !== 'yes') { box.innerHTML = base; return; }
+
+  const { body, status } = await api(`/api/analysis/${encodeURIComponent(det.dataset.more)}`);
+  if (status !== 200) { box.innerHTML = `${base}<p class="nota">Questa analisi non si trova più sul disco.</p>`; return; }
 
   const reqs = (body.requisiti || []).map((q) => {
     const seg = SEGNO[q.stato] || { mark: '·', parola: q.stato };
@@ -1391,90 +1344,70 @@ async function apriLettura(det) {
     : `<div class="agganci"><h4>Cosa può dire la lettera</h4>
        <p class="nota">Niente che regga su un fatto vero. La lettera qui non ha appigli.</p></div>`;
 
-  box.innerHTML = `${body.sintesi ? `<p class="sintesi">${esc(body.sintesi)}</p>` : ''}${reqs}${ag}`;
+  box.innerHTML = `${body.sintesi ? `<p class="sintesi">${esc(body.sintesi)}</p>` : ''}${base}${reqs}${ag}`;
 }
 
 /**
- * La pagina Cerca: quanto c'è in casa e chi viene interrogato.
+ * La schermata Cerca: quanto c'è in casa, e dove va a guardare.
  *
- * L'elenco arriva da portals.yml a ogni apertura, non è scritto qui: una lista
- * a mano nella pagina mentirebbe il primo giorno che una bacheca viene
- * disabilitata, e una pagina che nomina un portale che non interroga più è
- * peggio di una pagina che non ne nomina nessuno.
+ * L'elenco dei portali arriva da portals.yml, non è scritto qui: una lista a
+ * mano mentirebbe il primo giorno che una bacheca viene disabilitata. Sta
+ * chiuso, perché è configurazione e non il lavoro del giorno.
  */
 let fonti = null;
 
-async function drawSources() {
+async function drawSearchList() {
   const s = state.stats;
-  const inCoda = s.total === 0
-    ? 'In coda non c\'è niente.'
-    : `In coda ci sono <b>${s.total}</b> annunci, di cui <b>${s.readyToTriage}</b> ancora da valutare.`;
-  const posta = state.inbox > 0
-    ? ` In posta in arrivo <b>${state.inbox}</b>: li ha già trovati la ricerca precedente e la prossima li prende da lì, senza riscansionare.`
-    : '';
 
   if (!fonti) {
     const { body, status } = await api('/api/sources');
     fonti = status === 200 ? body : { error: body.error || 'portals.yml non si legge' };
   }
 
-  if (fonti.error) {
-    $('list').innerHTML = `<section class="group">
-      <div class="group-head"><h2>Le fonti</h2></div>
-      <p class="fonti-say">${inCoda}${posta}</p>
-      <div class="nota-fonti">${esc(fonti.error)}</div></section>`;
-    return;
-  }
+  const dentro = s.total === 0
+    ? 'In coda non c\'è ancora niente.'
+    : `In coda ci sono ${s.total} annunci, ${s.readyToTriage} ancora da valutare.`;
 
-  const { portals, counts } = fonti;
-  const attivi = portals.filter((p) => p.proven).length;
+  const elenco = fonti.error
+    ? `<p class="say">${esc(fonti.error)}</p>`
+    : fonti.portals.map((p) => `
+        <div class="fonte">
+          <span class="fonte-nome">${esc(p.id)}${p.examples.length
+            ? ` <span class="fonte-esempi">${esc(p.examples.join(', '))}${p.entries > p.examples.length ? '…' : ''}</span>` : ''}</span>
+          <span class="fonte-n">${p.entries === 1 ? '1 bacheca' : `${p.entries} bacheche`}</span>
+        </div>`).join('');
 
-  const righe = portals.map((p) => `
-    <div class="fonte">
-      <span class="fonte-nome">${esc(p.id)}${p.examples.length ? ` <span class="fonte-esempi">${esc(p.examples.join(', '))}${p.entries > p.examples.length ? '…' : ''}</span>` : ''}</span>
-      <span class="fonte-n">${p.entries === 1 ? '1 bacheca' : `${p.entries} bacheche`}</span>
-      <span class="fonte-esito" data-k="${p.proven ? 'si' : 'no'}">${p.proven ? 'ha dato annunci' : 'mai finora'}</span>
-    </div>`).join('');
-
-  const orfane = counts.unclaimed > 0
-    ? `<div class="nota-fonti"><b>${counts.unclaimed} voci questa ricerca non le apre.</b>
-       Sono aziende configurate per una ricerca sul web (OpenAI, Salesforce, Twilio e altre):
-       il percorso a zero token non la fa, quindi le salta e lo scrive nel registro.
-       Non è un guasto, è un pezzo di ricerca che resta da fare a mano.
-       <code>node audit-portals.mjs</code> le nomina una per una.</div>`
-    : '';
+  // Il numero che conta è quello delle bacheche interrogate: "12" erano le
+  // famiglie di portale, e nessuno pensa alla ricerca in quei termini.
+  const quanti_ = fonti.error ? '' : `<span class="n">${fonti.counts.total} bacheche</span>`;
 
   $('list').innerHTML = `
     <section class="group">
-      <div class="group-head"><h2>Le fonti della ricerca</h2><span class="n">${portals.length}</span></div>
-      <p class="fonti-say">${inCoda}${posta}</p>
-      <p class="fonti-say">La ricerca interroga <b>${portals.length}</b> portali, per
-        <b>${counts.total}</b> bacheche in tutto: ${counts.boards} bacheche di lavoro e
-        ${counts.companies} bacheche aziendali. Di questi portali <b>${attivi}</b> hanno
-        prodotto almeno un annuncio finora. Il limite che scrivi qui sopra pesca a turno,
-        un portale alla volta, così cinque annunci arrivano da un massimo di cinque fonti.</p>
-      ${righe}
-      ${orfane}
-      <div class="nota-fonti"><b>LinkedIn non è in questo elenco</b>, e non è una dimenticanza:
-        non ha un'API pubblica per gli annunci e il suo regolamento vieta di raccoglierli a
-        macchina. Un annuncio LinkedIn puoi sempre incollarlo a mano in
-        <code>data/pipeline.md</code>, e da lì entra in coda come tutti gli altri.</div>
-    </section>`;
+      <div class="group-head"><h2>In casa</h2></div>
+      <p class="say">${esc(dentro)}</p>
+    </section>
+    <details class="group">
+      <summary>
+        <div class="group-head"><h2>Dove cerca</h2>${quanti_}
+          <span class="link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>
+        </div>
+      </summary>
+      ${elenco}
+    </details>`;
 }
 
 function drawBlank() {
   $('list').innerHTML = `
     <div class="blank">
       <h2>Ancora niente in coda</h2>
-      <p>Il pannello lavora su cinque fasi in fila. Ognuna dice cosa farà prima di partire.</p>
+      <p>Cinque fasi in fila. Ognuna dice cosa farà prima di partire, e si può tornare indietro.</p>
       <ol>
-        <li><b>Cerca</b> interroga i portali e scarica il testo degli annunci. Non costa token.</li>
+        <li><b>Cerca</b> interroga i portali e scarica il testo degli annunci.</li>
         <li><b>Valuta</b> dà un punteggio a ciascuno e scrive la riga da mettere in cima al CV.</li>
-        <li><b>Analizza</b> rilegge per intero quelli passati, e dice cosa chiedono davvero.</li>
+        <li><b>Analizza</b> rilegge per intero quelli passati e dice cosa chiedono davvero.</li>
         <li><b>Documenti</b> genera CV e lettera per quelli sopra soglia.</li>
-        <li><b>Compila</b> apre il form riempito. L'invio resta tuo.</li>
+        <li><b>Compila</b> apre il form riempito.</li>
       </ol>
-      <p>Parti dalla prima.</p>
     </div>`;
 }
 
@@ -1492,13 +1425,15 @@ async function drawSetup() {
   const box = $('setup');
   if (!body || body.ready) { box.innerHTML = ''; return; }
   box.innerHTML = `
-    <section class="confirm" aria-labelledby="setup-h">
-      <div class="confirm-head" id="setup-h">Prima di iniziare</div>
-      <div class="confirm-body">
-        <p>Caronte non può partire finché mancano questi file. Dal terminale, nella cartella del progetto:</p>
-        <ul>${body.missing.map((m) => `<li><strong>${esc(m.path)}</strong> — ${esc(m.what)}<br><code>${esc(m.how)}</code></li>`).join('')}</ul>
-        <p>Poi ricarica la pagina.</p>
-      </div>
+    <section class="panel">
+      <span class="kicker">Prima di iniziare</span>
+      <h3>Mancano dei file</h3>
+      <p>Caronte non può partire finché non ci sono. Dal terminale, nella cartella del progetto:</p>
+      <dl class="facts">
+        ${body.missing.map((m) => `<div class="fact"><dt>${esc(m.path)}</dt>
+          <dd>${esc(m.what)}<br><code>${esc(m.how)}</code></dd></div>`).join('')}
+      </dl>
+      <p>Poi ricarica la pagina.</p>
     </section>`;
 }
 
@@ -1507,10 +1442,7 @@ async function refresh() {
   const { body } = await api('/api/state');
   state = body;
   if (!selected) selected = state.next || 'search';
-  const s = state.stats;
-  // I numeri stanno nella plancia: ripeterli qui era rumore.
-  $('sub').textContent = '';
-  drawRail();
+  drawTrack();
   drawAct();
   drawList();
 }
