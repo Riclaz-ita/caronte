@@ -891,6 +891,7 @@ let quanti = null;
 
 // Quali filtri sono spuntati. Sopravvive alla chiusura del browser: una
 // ricerca impostata bene non si reimposta ogni volta.
+let cercaWeb = false;   // ricerca web: costa token, quindi si accende a mano ogni volta
 let scelti = new Set();
 try { scelti = new Set(JSON.parse(localStorage.getItem('career-ops-filtri') || '[]')); } catch { scelti = new Set(); }
 
@@ -958,6 +959,10 @@ function drawAct() {
                    placeholder="altre parole: marketing, social — separale con la virgola"
                    autocomplete="off" spellcheck="false"></span>
         </div>
+        <div class="frow" role="group" aria-label="Ricerca web">
+          <span class="fname">Web</span>
+          <button class="chip" data-web aria-pressed="${cercaWeb}">Anche ricerca web: Indeed e siti aziendali (usa token)</button>
+        </div>
       </div>`
     : '';
 
@@ -990,6 +995,12 @@ function drawAct() {
     });
     fEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') askConfirm('search'); });
   }
+
+  const wEl = document.querySelector('[data-web]');
+  if (wEl) wEl.addEventListener('click', () => {
+    cercaWeb = !cercaWeb;
+    wEl.setAttribute('aria-pressed', String(cercaWeb));
+  });
 
   document.querySelectorAll('[data-chip]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -1058,8 +1069,9 @@ function limitValue() {
 async function askConfirm(phaseId, slug) {
   const limit = phaseId === 'search' || phaseId === 'triage' || phaseId === 'deep' ? limitValue() : undefined;
   const foc = phaseId === 'search' ? composeFocus() : undefined;
-  const { body } = await api('/api/preflight', { phase: phaseId, limit, focus: foc });
-  pending = { phase: phaseId, limit, focus: foc, slug };
+  const web = phaseId === 'search' && cercaWeb;
+  const { body } = await api('/api/preflight', { phase: phaseId, limit, focus: foc, web });
+  pending = { phase: phaseId, limit, focus: foc, slug, web };
   if (slug) body.affects = `solo ${slug}`;
   drawConfirm(body);
 }
@@ -1109,7 +1121,7 @@ async function go() {
     return refresh();
   }
 
-  const { body, status } = await api('/api/run', { phase: req.phase, limit: req.limit, focus: req.focus, slug: req.slug, confirm: true });
+  const { body, status } = await api('/api/run', { phase: req.phase, limit: req.limit, focus: req.focus, slug: req.slug, web: req.web, confirm: true });
   if (!body.runId) {
     if (status >= 400) $('fail').textContent = body.error || 'La fase non è partita.';
     busy = false;

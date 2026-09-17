@@ -11,7 +11,10 @@
  *   node fetch-jds.mjs --url https://jobs.ashbyhq.com/acme/123 --company Acme
  */
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { dirname, resolve } from 'path';
+import { classifyLiveness } from './liveness-core.mjs';
+import { resolveAtsApi, classifyLinkedInPosting, throttleProviderRequest } from './liveness-api.mjs';
 import { fileURLToPath } from 'url';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
@@ -122,6 +125,75 @@ export async function fetchJd(url) {
 }
 
 /**
+ * Read a posting no public API serves (LinkedIn, Indeed, a company page) with
+ * the core's read-only headless reader, browser-extract.mjs.
+ *
+ * The web search brings exactly these, and without text a row never reaches
+ * the triage. The page is judged by the core's own liveness classifier: a
+ * closed posting, an anti-bot wall or a near-empty page is a failure with its
+ * reason, never a JD made of cookie banners.
+ */
+export function judgeExtraction(url, extracted) {
+  const text = String(extracted?.text || '');
+  const verdict = classifyLiveness({ status: 200, requestedUrl: url, finalUrl: extracted?.url || url, bodyText: text, applyControls: [] });
+  if (verdict.result === 'expired') return { ok: false, closed: true, reason: `annuncio chiuso (${verdict.reason})` };
+  if (verdict.code === 'bot_challenge') return { ok: false, reason: 'pagina protetta da anti-bot' };
+  if (text.trim().length < 300) return { ok: false, reason: 'pagina quasi vuota' };
+  return { ok: true };
+}
+
+/**
+ * A LinkedIn posting's text from the same public guest endpoint the core's
+ * liveness check reads (liveness-api.mjs), paced by that module's own
+ * LinkedIn throttle. The logged-in page redirects a script to a search page,
+ * so the browser path cannot read it. A closed posting throws with `closed`.
+ */
+export function parseLinkedInPosting(html) {
+  const verdict = classifyLinkedInPosting(html);
+  if (verdict?.result === 'expired') return { closed: true, reason: verdict.reason };
+  const body = String(html || '').match(/class="show-more-less-html__markup[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+  const title = String(html || '').match(/class="top-card-layout__title[^"]*"[^>]*>([\s\S]*?)<\/h2>/);
+  const location = String(html || '').match(/class="topcard__flavor topcard__flavor--bullet"[^>]*>([\s\S]*?)<\/span>/);
+  const text = body ? stripHtml(body[1]) : '';
+  if (text.length < 300) return { closed: false, reason: 'descrizione LinkedIn assente o quasi vuota' };
+  return {
+    jd: {
+      title: title ? stripHtml(title[1]) : '',
+      location: location ? stripHtml(location[1]) : '',
+      type: '',
+      body: text,
+    },
+  };
+}
+
+export async function fetchLinkedInJd(url, doFetch = fetch) {
+  const resolved = resolveAtsApi(url);
+  if (resolved?.ats !== 'linkedin') throw new Error(`not a LinkedIn posting: ${url}`);
+  await throttleProviderRequest('linkedin', resolved.throttleMs);
+  const r = await doFetch(resolved.apiUrl, {
+    headers: { accept: 'text/html', 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' },
+    redirect: 'error',
+  });
+  if (!r.ok) throw new Error(`linkedin: HTTP ${r.status} ${r.statusText}`);
+  const parsed = parseLinkedInPosting(await r.text());
+  if (!parsed.jd) throw Object.assign(new Error(`linkedin: ${parsed.closed ? `annuncio chiuso (${parsed.reason})` : parsed.reason}`), { closed: parsed.closed });
+  return parsed.jd;
+}
+
+export function fetchJdViaBrowser(url, run = spawnSync) {
+  const r = run(process.execPath, [resolve(__dirname, 'browser-extract.mjs'), url, '--mode', 'jd', '--max-chars', '16000'],
+    { encoding: 'utf-8', timeout: 90_000 });
+  let extracted = null;
+  try { extracted = JSON.parse(r.stdout || ''); } catch { /* reported below */ }
+  if (r.status !== 0 || !extracted || extracted.error) {
+    throw new Error(`browser: ${extracted?.error || r.error?.message || `uscito con codice ${r.status}`}`);
+  }
+  const judged = judgeExtraction(url, extracted);
+  if (!judged.ok) throw Object.assign(new Error(`browser: ${judged.reason}`), { closed: Boolean(judged.closed) });
+  return { title: extracted.title || '', location: '', type: '', body: extracted.text };
+}
+
+/**
  * The row after one fetch attempt.
  *
  * jd_failed was a terminal state: nothing cleared it, build-packs filters on
@@ -161,7 +233,9 @@ if (isMainModule(import.meta.url)) {
   for (const row of pending) {
     let fetched = false;
     try {
-      const jd = await fetchJd(row.url);
+      const jd = atsOf(row.url) ? await fetchJd(row.url)
+        : resolveAtsApi(row.url)?.ats === 'linkedin' ? await fetchLinkedInJd(row.url)
+        : fetchJdViaBrowser(row.url);
       writeJd(row.slug, row.company, row.url, jd);
       fetched = true;
       ok += 1;

@@ -126,7 +126,7 @@ export const PHASES = [
   {
     id: 'search',
     label: 'Cerca annunci',
-    blurb: 'Cerca sui portali configurati e importa in coda il numero di annunci che chiedi, uno per portale a turno. Poi scarica le job description dalle API pubbliche.',
+    blurb: 'Cerca nelle pagine carriere, nelle bacheche e su LinkedIn secondo portals.yml, e se lo accendi anche sul web. Importa in coda il numero di annunci che chiedi e ne scarica il testo.',
     cost: 'zero token',
     risk: 'low',
     writes: ['data/scan-history.tsv', 'data/pipeline.md', 'data/apply-queue.tsv', 'jds/'],
@@ -144,6 +144,10 @@ export const PHASES = [
       if (opts.focus) importArgs.push('--focus', String(opts.focus));
       const steps = [];
       if (!inboxCovers(limit, opts.focus)) steps.push({ label: 'cerca sui portali', cmd: 'node', args: ['scan.mjs'] });
+      // Level 3 of the skill's scan: LinkedIn, Indeed and the open web through
+      // search_queries. Opt-in on every run, because it spends tokens and
+      // most search hits are closed postings the step then has to discard.
+      if (opts.web) steps.push({ label: 'cerca sul web', cmd: 'node', args: ['web-search.mjs'] });
       steps.push({ label: 'importa in coda', cmd: 'node', args: importArgs });
       steps.push({ label: 'scarica le job description', cmd: 'node', args: ['fetch-jds.mjs', '--queue', 'data/apply-queue.tsv'] });
       return steps;
@@ -514,6 +518,17 @@ export function preflight(phaseId, stats, opts = {}) {
   let affects;
   let warning = null;
 
+  if (phaseId === 'search' && opts.web) {
+    // The web search is the one search step that costs tokens: the dialog says so.
+    const base = preflight('search', stats, { ...opts, web: false });
+    return {
+      ...base,
+      cost: 'token — una richiesta con le ricerche web',
+      model: 'sonnet',
+      affects: `${base.affects}, più una ricerca web con le query di portals.yml`,
+      warning: [base.warning, 'La ricerca web trova molti annunci già chiusi: vengono controllati e scartati prima di entrare in coda.'].filter(Boolean).join(' '),
+    };
+  }
   if (phaseId === 'search') {
     const groups = parseFocus(opts.focus);
     const waiting = opts.inbox === undefined ? inboxEntries(opts.focus).length : opts.inbox;
@@ -1025,7 +1040,7 @@ export function createApp() {
         const body = await readBody(req);
         let limit;
         try { limit = parseLimit(body.limit); } catch (err) { return json(res, 400, { error: err.message }); }
-        return json(res, 200, preflight(body.phase, currentState().stats, { limit, focus: body.focus }));
+        return json(res, 200, preflight(body.phase, currentState().stats, { limit, focus: body.focus, web: body.web === true }));
       }
 
       if (req.method === 'POST' && url.pathname === '/api/run') {
@@ -1038,7 +1053,7 @@ export function createApp() {
         // 428 Precondition Required: the phase is valid but the candidate has
         // not yet seen what it would do. The body is the dialog to show.
         if (body.confirm !== true) {
-          return json(res, 428, preflight(phase.id, currentState().stats, { limit, focus: body.focus }));
+          return json(res, 428, preflight(phase.id, currentState().stats, { limit, focus: body.focus, web: body.web === true }));
         }
         // One phase at a time, enforced here and not only by greyed buttons:
         // two writers on the queue is the race the lock exists to lose gracefully,
@@ -1046,7 +1061,7 @@ export function createApp() {
         const busy = [...runs.values()].find((r) => r.status === 'running');
         if (busy) return json(res, 409, { error: `è già in corso "${busy.phase}" (${busy.id}); aspetta che finisca` });
         const run = newRun(phase.id);
-        runPhase(run, phase, { limit, focus: body.focus, slug: body.slug });
+        runPhase(run, phase, { limit, focus: body.focus, slug: body.slug, web: body.web === true });
         return json(res, 202, { runId: run.id });
       }
 

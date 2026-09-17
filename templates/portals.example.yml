@@ -985,7 +985,7 @@ search_queries:
 # Some providers are job boards / aggregators with no per-company careers
 # URL to detect, so they must be selected with an explicit `provider:`
 # field: 4dayweek, agentic-jobs, arbeitnow, arbeitsagentur, flowxtra, getonbrd, glints,
-# himalayas, ibm, jobbankca, jobicy, jobstreet, justjoin, landingjobs, mycareersfuture, nofluffjobs, remoteok, remotive, senjob,
+# himalayas, ibm, jobbankca, jobicy, jobstreet, justjoin, landingjobs, linkedin, mycareersfuture, nofluffjobs, remoteok, remotive, senjob,
 # manfred, thehub, vdab, weworkremotely, workingnomads, wttj, a16z-speedrun-talent,
 # telegram-channel. Examples for every built-in provider are below.
 
@@ -1368,6 +1368,15 @@ search_queries:
 #
 # - name: Remotive
 #   provider: remotive
+#   enabled: true
+#
+# - name: LinkedIn Milano
+#   provider: linkedin          # public logged-out search, no account used
+#   location: Milano, Lombardia, Italia
+#   posted_within_days: 7       # only recent postings (1-30)
+#   experience: [1, 2]          # 1 internship, 2 entry level
+#   max_pages: 3                # per keyword, 10 postings per page
+#   keywords: [social media, marketing, customer care]
 #   enabled: true
 #
 # - name: Get on Board

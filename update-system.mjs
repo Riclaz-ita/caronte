@@ -147,6 +147,7 @@ const SYSTEM_PATHS = [
   'field-provenance.mjs',
   'apply-ui.mjs',
   'record-submission.mjs',
+  'web-search.mjs',
   '.caronte-fork',
   'apply-ui.html',
   'caronte.jpg',
