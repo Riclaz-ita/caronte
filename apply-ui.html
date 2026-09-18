@@ -25,6 +25,35 @@
    numero o la sua parola, e la tinta al massimo conferma.
    ========================================================================== */
 
+/* Newsreader: serif da giornale disegnato per lo schermo, variabile sia di peso
+   sia di dimensione ottica, quindi un titolo grande e una nota da undici pixel
+   non sono lo stesso disegno ingrandito. Sta nel progetto come DM Sans: niente
+   CDN, funziona senza rete e nessuno fuori di qui sa che apri la pagina. */
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/newsreader-latin.woff2') format('woff2');
+  font-weight: 200 800; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/newsreader-latin-ext.woff2') format('woff2');
+  font-weight: 200 800; font-style: normal; font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/newsreader-italic-latin.woff2') format('woff2');
+  font-weight: 200 800; font-style: italic; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/newsreader-italic-latin-ext.woff2') format('woff2');
+  font-weight: 200 800; font-style: italic; font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @font-face {
   font-family: 'DM Sans';
   src: url('/fonts/dm-sans-latin.woff2') format('woff2');
@@ -49,10 +78,24 @@
   --ink-soft:     oklch(0.452 0.010 70);
   --ink-faint:    oklch(0.612 0.010 75);
 
-  /* Un accento d'azione, acqua profonda: viene dall'emblema ed è l'unico
-     colore che compare su un bottone. */
-  --accent:       oklch(0.430 0.096 207);
-  --accent-press: oklch(0.360 0.088 209);
+  /* Una tinta per fase. Non è decorazione: dice in quale delle cinque fasi sei,
+     e la stessa tinta torna nella rotaia, nella riga che apre una sezione e nel
+     bottone che fa partire quella fase. Chi non distingue i colori legge lo
+     stesso il numero, il nome e la parola "ora": il colore conferma, non
+     informa. Tutte tenute fra L 0.42 e L 0.48 perché passino il 4.5:1 sia sulla
+     carta sia col testo chiaro sopra. */
+  --fase-search:  oklch(0.430 0.096 207);   /* acqua, dall'emblema */
+  --fase-triage:  oklch(0.505 0.126 78);    /* ottone */
+  --fase-deep:    oklch(0.428 0.112 330);   /* prugna */
+  --fase-packs:   oklch(0.478 0.106 158);   /* verde */
+  --fase-form:    oklch(0.462 0.130 34);    /* mattone */
+
+  /* La tinta della fase corrente. La imposta la rotaia a ogni cambio. */
+  --phase:        var(--fase-search);
+  --phase-wash:   color-mix(in oklch, var(--phase) 9%, var(--paper));
+
+  --accent:       var(--phase);
+  --accent-press: color-mix(in oklch, var(--phase) 82%, black);
 
   /* I tre esiti. Sempre accompagnati da un numero o da una parola: se li
      guardi in bianco e nero non perdi niente. */
@@ -60,7 +103,7 @@
   --mid:          oklch(0.545 0.098 75);
   --bad:          oklch(0.498 0.132 32);
 
-  --serif: ui-serif, 'Iowan Old Style', Charter, 'Palatino Linotype', Palatino, Georgia, serif;
+  --serif: 'Newsreader', ui-serif, 'Iowan Old Style', Charter, Georgia, serif;
   --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
@@ -134,8 +177,10 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
   button:active:not(:disabled) { background: var(--rule); }
   button:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
 
-  button.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
-  button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+  /* Il bottone principale porta la tinta della fase che fa partire: guardandolo
+     sai già in che fase sei, e non devi rileggere l'intestazione. */
+  button.primary { background: var(--phase); border-color: var(--phase); color: var(--paper); font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
   button.primary:active:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
   button.primary:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-faint); }
 
@@ -188,9 +233,13 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
   padding: 0.4375rem 0.5rem;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-.step:hover { background: var(--paper-raised); color: var(--ink); }
-.step[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.step-n { font: 500 var(--t-xs)/1 var(--mono); opacity: 0.65; }
+.step:hover { background: color-mix(in oklch, var(--c, var(--ink)) 10%, var(--paper-raised)); color: var(--ink); }
+.step[aria-pressed="true"] { background: var(--c, var(--ink)); color: var(--paper); }
+/* Il numero porta la tinta della sua fase anche da spento: la rotaia si legge
+   come una scala di colori, e il numero resta lì a dire di quale fase si
+   tratta per chi le tinte non le distingue. */
+.step-n { font: 500 var(--t-xs)/1 var(--mono); color: var(--c); opacity: 1; }
+.step[aria-pressed="true"] .step-n { color: var(--paper); opacity: 0.75; }
 .step-name { font: 500 var(--t-sm)/1.25 var(--sans); }
 .step-sub {
   grid-column: 2; font: 400 var(--t-xs)/1.45 var(--mono);
@@ -243,7 +292,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
   backdrop-filter: blur(10px);
 }
 .crumb .where { font: 400 var(--t-xs)/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink-soft); }
-.crumb .where b { color: var(--ink); font-weight: 500; }
+.crumb .where b { color: var(--phase); font-weight: 600; }
 .crumb .sep { color: var(--rule-strong); }
 .crumb .spacer { flex: 1; }
 
@@ -252,6 +301,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 /* L'apertura di fase: titolo in grazie, una frase, i comandi. */
 .open { padding: 2.5rem 0 0; }
 .open h2 { font: 600 var(--t-xl)/1.1 var(--serif); letter-spacing: -0.022em; }
+.open > .tag { display: block; color: var(--phase); margin-bottom: 0.5rem; }
 .open p { margin: 0.625rem 0 0; max-width: 56ch; color: var(--ink-soft); }
 .open-bar { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; margin-top: 1.5rem; }
 .qty { display: inline-flex; align-items: center; gap: 0.5rem; }
@@ -264,7 +314,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 .frow > .tag { flex: 0 0 5rem; }
 .chip { font: 500 var(--t-xs)/1 var(--sans); padding: 0.375rem 0.625rem; border-radius: 2px; border-color: var(--rule); }
 /* Scelto si vede dal pieno, non dalla tinta. */
-.chip[aria-pressed="true"], .chip[aria-pressed="true"]:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"], .chip[aria-pressed="true"]:hover { background: var(--phase); border-color: var(--phase); color: var(--paper); }
 .focus { display: flex; flex: 1; min-width: 13rem; }
 .focus input { flex: 1; min-width: 0; }
 
@@ -277,10 +327,13 @@ details.block > summary::-webkit-details-marker { display: none; }
 
 /* La riga sotto il titolo di sezione è piena, non un filo: è lei a dire dove
    comincia un elenco. Le righe dentro sono divise da fili. */
+/* La riga che apre una sezione prende la tinta della fase, e l'etichetta con
+   lei: è il segno più largo della pagina, quindi è quello che dice dove sei. */
 .block-head {
   display: flex; align-items: baseline; gap: 0.625rem;
-  padding-bottom: 0.5rem; border-bottom: 2px solid var(--ink);
+  padding-bottom: 0.5rem; border-bottom: 2px solid var(--phase);
 }
+.block-head > .tag { color: var(--phase); }
 .block-head .n { font: 400 var(--t-xs)/1.4 var(--mono); color: var(--ink-faint); }
 .block-head .more-link { margin-left: auto; }
 .more-link {
@@ -354,7 +407,7 @@ summary:hover .more-link { color: var(--ink); }
 /* Un blocco di prova, come in una scheda di verifica: etichetta, poi la roba. */
 .part { margin-top: 1.5rem; }
 .part:first-child { margin-top: 0; }
-.part > .tag { display: block; padding-bottom: 0.4375rem; border-bottom: 1px solid var(--ink); margin-bottom: 0.75rem; }
+.part > .tag { display: block; color: var(--phase); padding-bottom: 0.4375rem; border-bottom: 1px solid var(--phase); margin-bottom: 0.75rem; }
 .part p { margin: 0 0 0.625rem; font-size: var(--t-sm); line-height: 1.7; }
 
 /* La striscia dei fatti brevi: etichetta sopra, valore sotto, un filo in
@@ -380,7 +433,7 @@ summary:hover .more-link { color: var(--ink); }
   padding: 0.5625rem 0; border-bottom: 1px solid var(--rule);
 }
 .req .i { font: 400 var(--t-xs)/1.7 var(--mono); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.req q { font-size: var(--t-sm); line-height: 1.55; quotes: '\201C' '\201D'; }
+.req q { font-size: var(--t-sm); line-height: 1.6; font-style: italic; quotes: '\201C' '\201D'; }
 .req .nota { margin: 0.25rem 0 0; font: 400 var(--t-xs)/1.55 var(--sans); color: var(--ink-soft); }
 .req .esito { font: 500 var(--t-xs)/1.7 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; text-align: right; white-space: nowrap; }
 .req .esito[data-k="si"] { color: var(--good); }
@@ -418,8 +471,8 @@ summary:hover .more-link { color: var(--ink); }
 /* ==========================================================================
    Schede: conferma, guasto, registro, profilo
    ========================================================================== */
-.card { border: 1px solid var(--ink); background: var(--paper-raised); padding: 1.375rem 1.5rem 1.5rem; margin-top: 2rem; }
-.card > .tag { display: block; margin-bottom: 0.625rem; }
+.card { border: 1px solid var(--phase); background: var(--paper-raised); padding: 1.375rem 1.5rem 1.5rem; margin-top: 2rem; }
+.card > .tag { display: block; color: var(--phase); margin-bottom: 0.625rem; }
 .card h3 { font: 600 var(--t-lg)/1.25 var(--serif); letter-spacing: -0.016em; }
 .card > p { margin: 0.5rem 0 0; color: var(--ink-soft); max-width: 60ch; font-size: var(--t-sm); line-height: 1.7; }
 .card .facts { margin: 1.25rem 0 0; }
@@ -428,7 +481,7 @@ summary:hover .more-link { color: var(--ink); }
 .card.fail { border-width: 2px; }
 .card .marks { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.875rem; }
 .mark-box { font: 500 var(--t-xs)/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.375rem 0.5rem; border: 1px solid var(--ink); }
-.mark-box.solid { background: var(--ink); color: var(--paper); }
+.mark-box.solid { background: var(--phase); color: var(--paper); border-color: var(--phase); }
 
 code { font: 400 0.92em/1.7 var(--mono); background: var(--paper-sunk); border: 1px solid var(--rule); padding: 0.0625rem 0.3125rem; overflow-wrap: anywhere; }
 
@@ -450,6 +503,7 @@ details.raw pre { font: 400 var(--t-xs)/1.7 var(--mono); background: var(--paper
 
 /* Il profilo: riassunto in cima, il resto una scheda per volta. */
 .io { display: none; margin-top: 2.5rem; }
+.io > .tag { color: var(--phase); }
 .io[data-open="yes"] { display: block; }
 .io-lead { font: 400 var(--t-md)/1.65 var(--serif); max-width: 58ch; margin: 1rem 0 2rem; }
 .io-lead b { font-weight: 600; }
@@ -463,9 +517,9 @@ details.raw pre { font: 400 var(--t-xs)/1.7 var(--mono); background: var(--paper
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .io-tab:hover { background: var(--paper-raised); color: var(--ink); }
-.io-tab[aria-selected="true"], .io-tab[aria-selected="true"]:hover { background: var(--ink); color: var(--paper); font-weight: 500; }
+.io-tab[aria-selected="true"], .io-tab[aria-selected="true"]:hover { background: var(--phase); color: var(--paper); font-weight: 500; }
 .io-tab .n { margin-left: auto; font: 400 var(--t-xs)/1 var(--mono); opacity: 0.6; }
-.io-panel h3 { font: 600 var(--t-md)/1.3 var(--serif); padding-bottom: 0.4375rem; border-bottom: 1px solid var(--ink); margin-bottom: 0.75rem; }
+.io-panel h3 { font: 600 var(--t-md)/1.3 var(--serif); padding-bottom: 0.4375rem; border-bottom: 1px solid var(--phase); margin-bottom: 0.75rem; }
 .io-panel p { margin: 0 0 0.75rem; font-size: var(--t-sm); line-height: 1.7; max-width: 62ch; color: var(--ink-soft); }
 .io-panel ul { margin: 0; padding: 0; list-style: none; max-width: 64ch; }
 .io-panel li { font-size: var(--t-sm); line-height: 1.6; padding: 0.4375rem 0 0.4375rem 1.375rem; text-indent: -1.375rem; border-top: 1px solid var(--rule); color: var(--ink-soft); }
@@ -592,6 +646,8 @@ let crumbWatch = null;   // tiene d'occhio se il bottone vero è ancora a scherm
 
 // Una casella, un numero. Due numeri per casella obbligavano a leggere invece
 // che a guardare, ed era il contrario del punto di una rotaia.
+// Ogni fase ha la sua tinta, dichiarata nel foglio di stile. Qui gira solo il
+// nome della variabile: i colori stanno in un posto solo.
 const STAGES = [
   { id: 'search', name: 'Cerca',     count: (s) => `${s.inPlay} in gioco` },
   { id: 'triage', name: 'Valuta',    count: (s) => `${s.readyToTriage} da valutare` },
@@ -652,8 +708,12 @@ async function api(path, opts) {
  */
 function drawTrack() {
   const s = state.stats;
+  // La tinta della fase corrente vale per tutta la pagina: bottoni, righe di
+  // sezione, etichette. Una riga sola, e il resto la eredita dal CSS.
+  document.documentElement.style.setProperty('--phase', `var(--fase-${selected || 'search'})`);
   $('track').innerHTML = STAGES.map((st, i) => `
-    <button class="step" data-stage="${esc(st.id)}" aria-pressed="${selected === st.id}">
+    <button class="step" data-stage="${esc(st.id)}" style="--c: var(--fase-${esc(st.id)})"
+            aria-pressed="${selected === st.id}">
       <span class="step-n">0${i + 1}</span>
       <span class="step-name">${esc(st.name)}</span>
       <span class="step-sub">${esc(st.count(s))}${state.next === st.id ? ' <span class="now">· ora</span>' : ''}</span>
@@ -807,6 +867,7 @@ function drawAct() {
     : '';
 
   $('act').innerHTML = `
+    <span class="tag">Fase 0${STAGES.findIndex((x) => x.id === id) + 1} di 5</span>
     <h2>${esc(stage ? stage.name : id)}</h2>
     <p id="act-say">${esc(SPIEGA[id](s))}</p>
     <div class="open-bar">
