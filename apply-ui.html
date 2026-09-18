@@ -141,7 +141,8 @@ h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.014em; margin: 0; }
   border-bottom: 2px solid transparent;
   transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
-.step:hover { color: var(--bone); }
+.step:hover { color: var(--bone); background: color-mix(in oklch, var(--bone) 9%, transparent); }
+.step:active { background: color-mix(in oklch, var(--bone) 14%, transparent); }
 .step-top { display: flex; align-items: baseline; gap: 0.5rem; }
 .step-n {
   font-size: var(--t-xs); font-weight: 500;
@@ -214,7 +215,8 @@ h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.014em; margin: 0; }
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .io-tab:hover { background: var(--paper-raised); color: var(--ink); }
-.io-tab[aria-selected="true"] { background: var(--ink); color: var(--paper); font-weight: 600; }
+.io-tab[aria-selected="true"],
+.io-tab[aria-selected="true"]:hover { background: var(--ink); color: var(--paper); font-weight: 600; }
 .io-tab .n { font-size: var(--t-xs); font-variant-numeric: tabular-nums; opacity: 0.6; margin-left: auto; }
 
 .io-panel h3 {
@@ -252,31 +254,44 @@ main { padding-bottom: 5rem; }
 
 .act-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 
-button {
-  font: 550 var(--t-sm)/1 var(--sans);
-  padding: 0.625rem 1rem;
-  border: 1px solid var(--rule-strong);
-  border-radius: 6px;
-  background: var(--paper-raised);
-  color: var(--ink);
-  cursor: pointer;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+/* La pelle comune dei bottoni, dentro un layer.
+ *
+ * Qualunque regola dentro un @layer perde contro qualunque regola fuori, a
+ * prescindere dalla specificità. È l'unico modo per cui un bottone che si
+ * disegna da solo — una casella di fase, una scheda del profilo, un filtro
+ * acceso — non debba mai vincere una gara di selettori contro questa.
+ *
+ * Senza il layer succedeva questo: la regola generica arrivava dopo, sotto il
+ * mouse riverniciava lo sfondo di carta e nella fascia scura il testo chiaro
+ * spariva nel chiaro. Provare a schivarla con `:not(...)` l'ha solo resa più
+ * forte, e a quel punto si è portata via anche i filtri accesi. */
+@layer base {
+  button {
+    font: 550 var(--t-sm)/1 var(--sans);
+    padding: 0.625rem 1rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  button:hover:not(:disabled) { background: var(--paper-sunk); border-color: var(--ink-faint); }
+  button:active:not(:disabled) { background: var(--rule); }
+  button:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
+
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: var(--paper);
+    font-weight: 600; padding-inline: 1.25rem;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
+  button.primary:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-faint); }
+
+  button.quiet { border-color: transparent; background: transparent; color: var(--ink-soft); padding-inline: 0.625rem; }
+  button.quiet:hover:not(:disabled) { background: var(--paper-sunk); color: var(--ink); }
+
+  button[data-busy="yes"] { color: var(--ink-faint); }
 }
-button:hover:not(:disabled) { background: var(--paper-sunk); border-color: var(--ink-faint); }
-button:active:not(:disabled) { background: var(--rule); }
-button:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
-
-button.primary {
-  background: var(--accent); border-color: var(--accent); color: var(--paper);
-  font-weight: 600; padding-inline: 1.25rem;
-}
-button.primary:hover:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
-button.primary:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-faint); }
-
-button.quiet { border-color: transparent; background: transparent; color: var(--ink-soft); padding-inline: 0.625rem; }
-button.quiet:hover:not(:disabled) { background: var(--paper-sunk); color: var(--ink); }
-
-button[data-busy="yes"] { color: var(--ink-faint); }
 
 .qty { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--t-sm); color: var(--ink-soft); }
 .qty input {

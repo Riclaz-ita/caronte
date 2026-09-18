@@ -474,3 +474,40 @@ ok('la frase lunga viene troncata su una parola intera', (() => {
   const t = teaserFromJd(`You will ${'lavorare con il gruppo '.repeat(20)}`, 80);
   return t.length <= 81 && t.endsWith('…') && !t.includes('  ');
 })());
+
+// -- La pelle dei bottoni non deve sopraffare chi si disegna da solo ---------
+//
+// Il pannello ha bottoni che non sembrano bottoni: le caselle delle fasi nella
+// fascia scura, le schede del profilo, i filtri accesi. Quando la regola
+// generica `button { background: carta }` è arrivata dopo di loro, sotto il
+// mouse ha riverniciato lo sfondo e il testo chiaro è sparito nel chiaro:
+// il bottone si accendeva di bianco e non si leggeva più. Schivarla con
+// `:not(...)` l'ha solo resa più forte, portandosi via anche i filtri.
+// La regola sta dentro `@layer base`, e un layer perde sempre contro chi sta
+// fuori, qualunque sia la specificità. Questo test tiene fermo quel patto.
+
+const PAGE_CSS = read(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apply-ui.html'), 'utf-8');
+
+/** Il corpo del primo `@layer <nome> {` , trovato contando le graffe. */
+function layerBody(css, nome) {
+  const apre = css.indexOf(`@layer ${nome} {`);
+  if (apre === -1) return null;
+  let i = css.indexOf('{', apre), depth = 0;
+  for (let j = i; j < css.length; j += 1) {
+    if (css[j] === '{') depth += 1;
+    else if (css[j] === '}' && --depth === 0) return css.slice(i + 1, j);
+  }
+  return null;
+}
+
+const base = layerBody(PAGE_CSS, 'base');
+ok('la pelle comune dei bottoni sta in @layer base', base !== null && /(^|\n)\s*button\s*\{/.test(base));
+ok('e con lei i suoi stati, altrimenti resterebbero a vincere da soli',
+  base !== null && /button:hover:not\(:disabled\)/.test(base) && /button:disabled/.test(base));
+// Se il layer manca, il patto è già rotto e lo dicono i due test qui sopra:
+// qui interessa il caso opposto, cioè una regola nuova scritta fuori dal layer
+// che ricomincerebbe a vincere sui bottoni che si disegnano da soli.
+const fuori = base === null ? '' : PAGE_CSS.replace(base, '');
+ok('fuori dal layer non resta nessuna regola sul solo elemento button',
+  base !== null && !/(^|\n)[ \t]*button(\.[\w-]+)?(:[\w-]+(\([^)]*\))?)*[ \t]*[,{]/.test(fuori));
+ok('nessun bottone deve più ricordarsi di marcarsi a mano', !/\bclass="[^"]*\bbare\b/.test(PAGE_CSS));

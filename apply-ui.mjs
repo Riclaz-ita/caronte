@@ -1060,7 +1060,10 @@ export function createApp() {
 
       if (req.method === 'GET' && url.pathname === '/') {
         const html = readFileSync(PAGE, 'utf-8');
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        // Mai dalla cache: la pagina è un file su disco che cambia quando il
+        // progetto cambia, e una versione vecchia tenuta dal browser fa
+        // sembrare che una modifica non sia mai arrivata.
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         return res.end(html);
       }
 
