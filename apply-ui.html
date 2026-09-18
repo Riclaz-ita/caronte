@@ -5,13 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Caronte</title>
 <style>
-/* --------------------------------------------------------------------------
-   Caratteri
+/* ==========================================================================
+   Caronte — banco di verifica
 
-   DM Sans, variabile, servita dal disco: gli stessi file che compongono il CV.
-   Niente CDN, così il pannello funziona senza rete e nessuno fuori di qui sa
-   che lo stai aprendo.
-   -------------------------------------------------------------------------- */
+   Il modello non è un cruscotto, è una redazione. Caronte fa esattamente
+   quello che fa un banco di fact-checking: prende una cosa da giudicare
+   (l'annuncio), ci mette sopra un verdetto con un numero, elenca le prove una
+   per una col loro esito, e lascia la decisione a chi legge. Da lì viene
+   tutta la forma:
+
+     - il contenuto è in grazie, perché è roba da leggere;
+     - le etichette e i numeri sono in monospaziato maiuscolo spaziato, perché
+       sono apparato, non prosa, e devono sparire finché non li cerchi;
+     - niente riquadri: righe separate da un filo, come in un elenco stampato;
+     - il verdetto sta a destra, grande, con la sua didascalia minuscola sotto,
+       che dice di che numero si tratta.
+
+   Il colore non porta mai un'informazione da solo: ogni esito ha il suo
+   numero o la sua parola, e la tinta al massimo conferma.
+   ========================================================================== */
+
 @font-face {
   font-family: 'DM Sans';
   src: url('/fonts/dm-sans-latin.woff2') format('woff2');
@@ -25,49 +38,43 @@
   unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* --------------------------------------------------------------------------
-   Tinte
-
-   Dall'emblema: grotta di ardesia verde-azzurra, acqua che illumina da sotto.
-   Della grotta l'interfaccia prende solo la plancia in alto, che è l'unica
-   superficie scura: il pannello si usa di giorno, alla scrivania. Carta
-   pallida virata sul verde-acqua, inchiostro di ardesia, mai bianco e mai
-   nero. Un accento solo, acqua profonda, per tre cose: l'azione principale,
-   la fase scelta, l'anello di fuoco. Mai decorazione.
-   -------------------------------------------------------------------------- */
 :root {
-  --paper:        oklch(0.980 0.005 200);
-  --paper-sunk:   oklch(0.957 0.009 200);
-  --paper-raised: oklch(0.995 0.003 200);
-  --rule:         oklch(0.898 0.011 200);
-  --rule-strong:  oklch(0.812 0.016 202);
-  --ink:          oklch(0.250 0.034 218);
-  --ink-soft:     oklch(0.468 0.027 212);
-  --ink-faint:    oklch(0.622 0.020 207);
-  --accent:       oklch(0.440 0.100 207);
-  --accent-press: oklch(0.368 0.092 209);
-  --accent-wash:  oklch(0.948 0.032 200);
+  /* Carta calda, inchiostro caldo. Mai bianco, mai nero. */
+  --paper:        oklch(0.972 0.005 85);
+  --paper-sunk:   oklch(0.950 0.008 84);
+  --paper-raised: oklch(0.987 0.003 85);
+  --rule:         oklch(0.876 0.008 82);
+  --rule-strong:  oklch(0.760 0.011 80);
+  --ink:          oklch(0.235 0.010 65);
+  --ink-soft:     oklch(0.452 0.010 70);
+  --ink-faint:    oklch(0.612 0.010 75);
 
-  --deep:         oklch(0.214 0.044 221);
-  --deep-up:      oklch(0.268 0.046 219);
-  --deep-rule:    oklch(0.352 0.044 212);
-  --bone:         oklch(0.944 0.014 190);
-  --bone-soft:    oklch(0.735 0.024 198);
-  --glow:         oklch(0.852 0.108 191);
+  /* Un accento d'azione, acqua profonda: viene dall'emblema ed è l'unico
+     colore che compare su un bottone. */
+  --accent:       oklch(0.430 0.096 207);
+  --accent-press: oklch(0.360 0.088 209);
 
+  /* I tre esiti. Sempre accompagnati da un numero o da una parola: se li
+     guardi in bianco e nero non perdi niente. */
+  --good:         oklch(0.470 0.092 155);
+  --mid:          oklch(0.545 0.098 75);
+  --bad:          oklch(0.498 0.132 32);
+
+  --serif: ui-serif, 'Iowan Old Style', Charter, 'Palatino Linotype', Palatino, Georgia, serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 
-  --t-xs:   0.75rem;
+  --t-xs:   0.6875rem;
   --t-sm:   0.8125rem;
   --t-base: 0.9375rem;
   --t-md:   1.0625rem;
   --t-lg:   1.375rem;
-  --t-xl:   1.875rem;
+  --t-xl:   2rem;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur: 170ms;
-  --pad: clamp(1.25rem, 4vw, 2.5rem);
+  --dur: 160ms;
+  --rail: 15rem;
+  --pad: clamp(1.25rem, 3vw, 2.5rem);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -77,19 +84,17 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 400 var(--t-base)/1.55 var(--sans);
-  font-feature-settings: 'ss01';
+  font: 400 var(--t-base)/1.6 var(--serif);
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
 
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 
-.wrap { max-width: 74rem; margin: 0 auto; padding-inline: var(--pad); }
+h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 
 .sr {
   position: absolute; width: 1px; height: 1px;
@@ -97,180 +102,29 @@ body {
   clip-path: inset(50%); white-space: nowrap;
 }
 
-h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.014em; margin: 0; }
-
-/* ==========================================================================
-   Plancia — fissa in alto, non si chiude mai
-   ========================================================================== */
-.board {
-  position: sticky; top: 0; z-index: 20;
-  background: var(--deep);
-  color: var(--bone);
-  box-shadow: 0 1px 0 var(--deep-rule), 0 6px 20px -14px oklch(0.2 0.04 220 / 0.6);
-}
-.board :focus-visible { outline-color: var(--glow); }
-
-.crest { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0 0.5rem; }
-/* L'emblema nelle sue proporzioni 4:5. Il nome gli sta di fianco, quindi è
-   decorativo e l'alt resta vuoto: letto ad alta voce raddoppierebbe "Caronte". */
-.crest img {
-  width: 2rem; height: 2.5rem; object-fit: cover; border-radius: 4px;
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--glow) 30%, transparent);
-}
-.crest h1 { font-size: var(--t-md); font-weight: 650; color: var(--bone); }
-.crest .claim { font-size: var(--t-xs); color: var(--bone-soft); }
-.crest .spacer { flex: 1; }
-
-/* Le cinque fasi. La posizione porta il significato, la parola lo conferma,
-   il colore non informa. Scorre di lato sugli schermi stretti. */
-.track {
-  display: flex; gap: 0;
-  overflow-x: auto; scrollbar-width: none;
-  scroll-snap-type: x proximity;
-  border-top: 1px solid var(--deep-rule);
-}
-.track::-webkit-scrollbar { display: none; }
-
-.step {
-  appearance: none; border: 0; background: none; cursor: pointer;
-  font: inherit; color: var(--bone-soft); text-align: left;
-  flex: 1 0 auto; min-width: 8.5rem;
-  scroll-snap-align: start;
-  padding: 0.6875rem 1.125rem 0.75rem 0;
-  display: grid; gap: 0.1875rem;
-  border-bottom: 2px solid transparent;
-  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
-}
-.step:hover { color: var(--bone); background: color-mix(in oklch, var(--bone) 9%, transparent); }
-.step:active { background: color-mix(in oklch, var(--bone) 14%, transparent); }
-.step-top { display: flex; align-items: baseline; gap: 0.5rem; }
-.step-n {
-  font-size: var(--t-xs); font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.55;
-}
-.step-name { font-size: var(--t-sm); font-weight: 550; letter-spacing: -0.006em; }
-.step-sub { font-size: var(--t-xs); line-height: 1.35; opacity: 0.78; }
-.step-sub .now { font-weight: 600; color: var(--glow); opacity: 1; }
-/* Scelta: la barra piena sotto, e il nome in chiaro. Due segni, nessuno dei
-   due è il colore da solo. */
-.step[aria-pressed="true"] { color: var(--bone); border-bottom-color: var(--glow); }
-.step[aria-pressed="true"] .step-name { font-weight: 680; }
-.step[aria-pressed="true"] .step-n { opacity: 0.85; }
-.step:focus-visible { outline-offset: -3px; }
-
-/* ==========================================================================
-   Riga di servizio — profilo e ripristino, fuori dalla strada
-   ========================================================================== */
-.util { border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
-.util-in { display: flex; align-items: center; gap: 1.5rem; min-height: 2.625rem; }
-
-.link {
-  appearance: none; border: 0; background: none; cursor: pointer;
-  font: 500 var(--t-sm)/1 var(--sans); color: var(--ink-soft);
-  padding: 0.5rem 0; display: inline-flex; align-items: center; gap: 0.4375rem;
-  transition: color var(--dur) var(--ease);
-}
-.link:hover { color: var(--ink); }
-.link[hidden] { display: none; }
-/* Un solo gesto, un solo vocabolario: la parola cambia con lo stato. */
-.link .chiuso, .link .aperto { display: none; }
-:not([open]) > summary .link .chiuso, [aria-expanded="false"] .chiuso { display: inline; }
-[open] > summary .link .aperto, [aria-expanded="true"] .aperto { display: inline; }
-
-/* Il segno di apertura: due righe da 1px, come tutto il resto della pagina.
-   La gamba verticale sparisce quando il blocco è aperto. Nessun glifo. */
-.caret { position: relative; display: block; width: 0.625rem; height: 0.625rem; }
-.caret::before, .caret::after { content: ''; position: absolute; background: currentColor; }
-.caret::before { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-0.5px); }
-.caret::after {
-  top: 0; bottom: 0; left: 50%; width: 1px;
-  transform: translateX(-0.5px) scaleY(1);
-  transition: transform var(--dur) var(--ease);
-}
-[open] > summary .caret::after, [aria-expanded="true"] .caret::after { transform: translateX(-0.5px) scaleY(0); }
-
-/* ==========================================================================
-   Profilo
-   ========================================================================== */
-.io { display: none; border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
-.io[data-open="yes"] { display: block; }
-.io-in { padding: 1.75rem 0 2.5rem; }
-
-.io-lead {
-  font-size: var(--t-md); line-height: 1.5; font-weight: 450;
-  max-width: 60ch; margin: 0 0 1.75rem;
-  letter-spacing: -0.008em;
-}
-.io-lead b { font-weight: 650; }
-
-.io-grid { display: grid; grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr); gap: 0 2.5rem; align-items: start; }
-
-.io-tabs { display: flex; flex-direction: column; gap: 1px; }
-.io-tab {
-  appearance: none; border: 0; cursor: pointer; text-align: left;
-  font: 500 var(--t-sm)/1.3 var(--sans); color: var(--ink-soft);
-  background: none; padding: 0.5rem 0.625rem; border-radius: 5px;
-  display: flex; align-items: baseline; gap: 0.5rem;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.io-tab:hover { background: var(--paper-raised); color: var(--ink); }
-.io-tab[aria-selected="true"],
-.io-tab[aria-selected="true"]:hover { background: var(--ink); color: var(--paper); font-weight: 600; }
-.io-tab .n { font-size: var(--t-xs); font-variant-numeric: tabular-nums; opacity: 0.6; margin-left: auto; }
-
-.io-panel h3 {
-  font-size: var(--t-base); font-weight: 650; margin-bottom: 0.875rem;
-}
-.io-panel p { margin: 0 0 0.875rem; font-size: var(--t-sm); line-height: 1.65; max-width: 62ch; color: var(--ink-soft); }
-.io-panel ul { margin: 0; padding: 0; list-style: none; max-width: 64ch; }
-.io-panel li {
-  font-size: var(--t-sm); line-height: 1.6;
-  padding: 0.5rem 0 0.5rem 1.125rem; text-indent: -1.125rem;
-  border-top: 1px solid var(--rule);
-  color: var(--ink-soft);
-}
-.io-panel li::before { content: '·'; display: inline-block; width: 1.125rem; text-indent: 0; color: var(--ink-faint); }
-.io-panel li b { font-weight: 640; color: var(--ink); }
-/* I divieti non sono qualità in meno: sono il perimetro entro cui tutto il
-   resto è vero. Segno diverso, parola diversa. */
-.io-panel[data-guard="yes"] li::before { content: '✗'; color: var(--ink); }
-
-@media (max-width: 52rem) {
-  .io-grid { grid-template-columns: 1fr; gap: 1.25rem; }
-  .io-tabs { flex-direction: row; flex-wrap: wrap; }
-  .io-tab .n { display: none; }
+/* L'etichetta: monospaziato maiuscolo spaziato. È apparato di redazione, non
+   prosa, e questa è la sua unica forma in tutta la pagina. */
+.tag {
+  font: 500 var(--t-xs)/1.4 var(--mono);
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
-/* ==========================================================================
-   Pannello della fase
-   ========================================================================== */
-main { padding-bottom: 5rem; }
+/* --------------------------------------------------------------------------
+   Pelle comune dei controlli, dentro un layer.
 
-.act { padding: 2.25rem 0 0; }
-.act-head { max-width: 58ch; margin-bottom: 1.375rem; }
-.act-head h2 { font-size: var(--t-xl); line-height: 1.15; letter-spacing: -0.026em; }
-.act-head p { margin: 0.5rem 0 0; font-size: var(--t-base); line-height: 1.55; color: var(--ink-soft); }
-
-.act-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-
-/* La pelle comune dei bottoni, dentro un layer.
- *
- * Qualunque regola dentro un @layer perde contro qualunque regola fuori, a
- * prescindere dalla specificità. È l'unico modo per cui un bottone che si
- * disegna da solo — una casella di fase, una scheda del profilo, un filtro
- * acceso — non debba mai vincere una gara di selettori contro questa.
- *
- * Senza il layer succedeva questo: la regola generica arrivava dopo, sotto il
- * mouse riverniciava lo sfondo di carta e nella fascia scura il testo chiaro
- * spariva nel chiaro. Provare a schivarla con `:not(...)` l'ha solo resa più
- * forte, e a quel punto si è portata via anche i filtri accesi. */
+   Qualunque regola dentro un @layer perde contro qualunque regola fuori, a
+   prescindere dalla specificità: così un controllo che si disegna da solo non
+   deve mai vincere una gara di selettori contro questa. Senza il layer la
+   regola generica riverniciava lo sfondo al passaggio del mouse e il testo
+   chiaro spariva nel chiaro.
+   -------------------------------------------------------------------------- */
 @layer base {
   button {
-    font: 550 var(--t-sm)/1 var(--sans);
-    padding: 0.625rem 1rem;
+    font: 500 var(--t-sm)/1 var(--sans);
+    padding: 0.5625rem 0.9375rem;
     border: 1px solid var(--rule-strong);
-    border-radius: 6px;
+    border-radius: 3px;
     background: var(--paper-raised);
     color: var(--ink);
     cursor: pointer;
@@ -280,401 +134,444 @@ main { padding-bottom: 5rem; }
   button:active:not(:disabled) { background: var(--rule); }
   button:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
 
-  button.primary {
-    background: var(--accent); border-color: var(--accent); color: var(--paper);
-    font-weight: 600; padding-inline: 1.25rem;
-  }
-  button.primary:hover:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
+  button.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+  button.primary:active:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
   button.primary:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-faint); }
 
-  button.quiet { border-color: transparent; background: transparent; color: var(--ink-soft); padding-inline: 0.625rem; }
+  button.quiet { border-color: transparent; background: transparent; color: var(--ink-soft); padding-inline: 0.5rem; }
   button.quiet:hover:not(:disabled) { background: var(--paper-sunk); color: var(--ink); }
 
-  button[data-busy="yes"] { color: var(--ink-faint); }
-}
-
-.qty { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--t-sm); color: var(--ink-soft); }
-.qty input {
-  width: 4.5rem;
-  font: 550 var(--t-sm)/1 var(--sans); font-variant-numeric: tabular-nums;
-  padding: 0.5625rem 0.625rem;
-  border: 1px solid var(--rule-strong);
-  border-radius: 6px;
-  background: var(--paper-raised);
-  color: var(--ink);
-}
-
-/* I filtri: una riga per domanda, l'etichetta sempre nella stessa colonna,
-   così le risposte si leggono incolonnate invece che a zig-zag. */
-.filtri {
-  flex: 1 0 100%;
-  margin-top: 1.5rem; padding-top: 1.375rem;
-  border-top: 1px solid var(--rule);
-  display: grid; gap: 0.625rem;
-}
-.frow { display: flex; align-items: center; gap: 0.4375rem; flex-wrap: wrap; }
-.fname {
-  flex: 0 0 5.25rem;
-  font: 500 var(--t-xs)/1 var(--sans);
-  letter-spacing: 0.055em; text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.chip {
-  font: 500 var(--t-xs)/1 var(--sans);
-  padding: 0.4375rem 0.75rem;
-  border-radius: 999px;
-  border-color: var(--rule);
-}
-/* Scelto si vede dal pieno, non dalla tinta. */
-.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.chip[aria-pressed="true"]:hover { background: var(--ink); color: var(--paper); }
-
-.focus { display: flex; flex: 1; min-width: 14rem; }
-.focus input {
-  flex: 1; min-width: 0;
-  font: 400 var(--t-sm)/1.3 var(--sans);
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  background: var(--paper-raised);
-  color: var(--ink);
-}
-.focus input::placeholder { color: var(--ink-faint); }
-
-/* ==========================================================================
-   Conferma — in linea, mai una finestra sopra la pagina
-   ========================================================================== */
-.panel {
-  border: 1px solid var(--ink);
-  border-radius: 10px;
-  background: var(--paper-raised);
-  padding: 1.5rem;
-  margin-top: 2rem;
-}
-.panel > .kicker {
-  font: 600 var(--t-xs)/1 var(--sans);
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--ink-faint);
-  display: block; margin-bottom: 0.625rem;
-}
-.panel h3 { font-size: var(--t-lg); letter-spacing: -0.02em; }
-.panel > p { margin: 0.5rem 0 0; color: var(--ink-soft); max-width: 62ch; }
-
-.facts { margin: 1.375rem 0 0; display: grid; gap: 0; }
-.fact {
-  display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 1rem;
-  padding: 0.5625rem 0; border-top: 1px solid var(--rule);
-  font-size: var(--t-sm);
-}
-.fact dt { margin: 0; color: var(--ink-faint); font-weight: 500; }
-.fact dd { margin: 0; min-width: 0; color: var(--ink-soft); }
-.fact dd b { color: var(--ink); font-weight: 620; }
-code {
-  font: 400 0.9em/1.6 var(--mono);
-  background: var(--paper-sunk); border: 1px solid var(--rule);
-  padding: 0.0625rem 0.3125rem; border-radius: 4px;
-  overflow-wrap: anywhere;
-}
-
-.warn {
-  margin-top: 1.25rem;
-  font-size: var(--t-sm); line-height: 1.55;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--rule-strong);
-  background: var(--paper-sunk);
-  border-radius: 6px;
-  max-width: 68ch;
-}
-.warn b { font-weight: 640; }
-
-.panel-actions { display: flex; gap: 0.625rem; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; }
-
-/* L'errore non usa un secondo colore: usa l'inchiostro pieno e le parole. */
-.panel.fail { border-width: 2px; }
-.tags { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-.tag {
-  font: 600 var(--t-xs)/1 var(--sans);
-  text-transform: uppercase; letter-spacing: 0.06em;
-  padding: 0.3125rem 0.5rem; border-radius: 4px;
-  background: var(--ink); color: var(--paper);
-}
-.tag.open { background: none; color: var(--ink-soft); border: 1px solid var(--rule-strong); }
-
-details.raw { margin-top: 1.375rem; border-top: 1px solid var(--rule); padding-top: 0.875rem; }
-details.raw > summary {
-  cursor: pointer; list-style: none;
-  font: 600 var(--t-xs)/1 var(--sans);
-  text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint);
-}
-details.raw > summary::-webkit-details-marker { display: none; }
-details.raw > summary:hover { color: var(--ink); }
-details.raw pre {
-  font: 400 var(--t-xs)/1.6 var(--mono);
-  background: var(--paper-sunk); color: var(--ink-soft);
-  border: 1px solid var(--rule);
-  padding: 0.875rem; border-radius: 6px;
-  max-height: 17rem; overflow: auto;
-  margin: 0.875rem 0 0; white-space: pre-wrap; word-break: break-word;
+  input {
+    font: 400 var(--t-sm)/1.3 var(--sans);
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    background: var(--paper-raised);
+    color: var(--ink);
+  }
+  input::placeholder { color: var(--ink-faint); }
 }
 
 /* ==========================================================================
-   Registro di esecuzione
+   Impaginato: rotaia a sinistra, banco a destra
    ========================================================================== */
-.run { margin-top: 2rem; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
-.run-head {
-  display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.6875rem 1rem;
+.desk { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); min-height: 100vh; }
+
+.rail {
+  position: sticky; top: 0; align-self: start; height: 100vh;
+  border-right: 1px solid var(--rule);
   background: var(--paper-sunk);
+  display: flex; flex-direction: column;
+  padding: 1.25rem 0 1rem;
+  overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 0.625rem; padding: 0 1.25rem 1.5rem; }
+/* L'emblema nelle sue proporzioni 4:5. Il nome gli sta di fianco, quindi è
+   decorativo e l'alt resta vuoto: letto ad alta voce raddoppierebbe "Caronte". */
+.brand img { width: 1.875rem; height: 2.34375rem; object-fit: cover; border-radius: 3px; flex: none; }
+.brand b { font: 600 var(--t-md)/1.05 var(--serif); letter-spacing: -0.012em; display: block; }
+.brand .tag { display: block; margin-top: 0.25rem; font-size: 0.625rem; letter-spacing: 0.16em; }
+
+.rail-group { padding: 0 0.75rem; }
+.rail-group > .tag { display: block; padding: 0 0.5rem 0.5rem; }
+.rail .foot { margin-top: auto; padding-top: 1.5rem; }
+
+/* Una fase: numero e nome in fila, conteggio sotto. La corrente porta scritto
+   "ora", perché il consiglio non può stare nel solo colore. */
+.step {
+  display: grid; grid-template-columns: 1.625rem minmax(0, 1fr); align-items: baseline;
+  width: 100%; text-align: left;
+  appearance: none; border: 0; border-radius: 3px; background: none;
+  font: inherit; color: var(--ink-soft); cursor: pointer;
+  padding: 0.4375rem 0.5rem;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.step:hover { background: var(--paper-raised); color: var(--ink); }
+.step[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.step-n { font: 500 var(--t-xs)/1 var(--mono); opacity: 0.65; }
+.step-name { font: 500 var(--t-sm)/1.25 var(--sans); }
+.step-sub {
+  grid-column: 2; font: 400 var(--t-xs)/1.45 var(--mono);
+  letter-spacing: 0.02em; opacity: 0.7; margin-top: 0.1875rem;
+}
+.step[aria-pressed="true"] .step-sub { opacity: 0.85; }
+.step-sub .now { text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
+
+.rail-link {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%;
+  appearance: none; border: 0; border-radius: 3px; background: none;
+  font: 400 var(--t-sm)/1.3 var(--sans); color: var(--ink-soft);
+  text-align: left; cursor: pointer; padding: 0.4375rem 0.5rem;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.rail-link:hover { background: var(--paper-raised); color: var(--ink); }
+.rail-link[hidden] { display: none; }
+.rail-link .mark { margin-left: auto; color: var(--ink-faint); }
+
+/* Il segno di apertura: due fili da 1px, come ogni altra riga della pagina.
+   La gamba verticale sparisce quando il blocco è aperto. Nessun glifo. */
+.caret { position: relative; display: block; width: 0.5625rem; height: 0.5625rem; flex: none; }
+.caret::before, .caret::after { content: ''; position: absolute; background: currentColor; }
+.caret::before { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-0.5px); }
+.caret::after {
+  top: 0; bottom: 0; left: 50%; width: 1px;
+  transform: translateX(-0.5px) scaleY(1);
+  transition: transform var(--dur) var(--ease);
+}
+[open] > summary .caret::after, [aria-expanded="true"] .caret::after { transform: translateX(-0.5px) scaleY(0); }
+
+/* Un gesto, un vocabolario: la parola cambia con lo stato. */
+.chiuso, .aperto { display: none; }
+:not([open]) > summary .chiuso, [aria-expanded="false"] .chiuso { display: inline; }
+[open] > summary .aperto, [aria-expanded="true"] .aperto { display: inline; }
+
+/* ==========================================================================
+   Il banco
+   ========================================================================== */
+.bench { min-width: 0; display: flex; flex-direction: column; }
+
+/* La briciola di pane: dove sei, quanto c'è, e l'unica azione che conta.
+   Resta in alto perché su un elenco lungo il bottone non deve scappare. */
+.crumb {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.625rem var(--pad);
   border-bottom: 1px solid var(--rule);
-  font: 600 var(--t-xs)/1 var(--sans);
-  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft);
+  background: color-mix(in oklch, var(--paper) 86%, transparent);
+  backdrop-filter: blur(10px);
 }
-/* Il battito dice "sta girando" a chi guarda; la parola lo dice a tutti. */
-.run-head .beat {
-  width: 0.4375rem; height: 0.4375rem; border-radius: 50%;
-  background: var(--ink-faint);
-}
-.run[data-live="yes"] .run-head .beat { background: var(--accent); animation: beat 1.4s var(--ease) infinite; }
-@keyframes beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-.run-log {
-  font: 400 var(--t-xs)/1.7 var(--mono);
-  color: var(--ink-soft);
-  max-height: 12rem; overflow-y: auto;
-  white-space: pre-wrap; word-break: break-word;
-  padding: 0.75rem 1rem;
-}
-.run-log .cur { color: var(--ink); font-weight: 500; }
+.crumb .where { font: 400 var(--t-xs)/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink-soft); }
+.crumb .where b { color: var(--ink); font-weight: 500; }
+.crumb .sep { color: var(--rule-strong); }
+.crumb .spacer { flex: 1; }
+
+.sheet { padding: 0 var(--pad) 5rem; max-width: 64rem; }
+
+/* L'apertura di fase: titolo in grazie, una frase, i comandi. */
+.open { padding: 2.5rem 0 0; }
+.open h2 { font: 600 var(--t-xl)/1.1 var(--serif); letter-spacing: -0.022em; }
+.open p { margin: 0.625rem 0 0; max-width: 56ch; color: var(--ink-soft); }
+.open-bar { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.qty { display: inline-flex; align-items: center; gap: 0.5rem; }
+.qty input { width: 4rem; font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: center; }
+
+/* I filtri: una domanda per riga, l'etichetta sempre nella stessa colonna,
+   così le risposte si leggono incolonnate invece che a zig-zag. */
+.filtri { flex: 1 0 100%; margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); display: grid; gap: 0.5rem; }
+.frow { display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
+.frow > .tag { flex: 0 0 5rem; }
+.chip { font: 500 var(--t-xs)/1 var(--sans); padding: 0.375rem 0.625rem; border-radius: 2px; border-color: var(--rule); }
+/* Scelto si vede dal pieno, non dalla tinta. */
+.chip[aria-pressed="true"], .chip[aria-pressed="true"]:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.focus { display: flex; flex: 1; min-width: 13rem; }
+.focus input { flex: 1; min-width: 0; }
 
 /* ==========================================================================
-   Gli annunci
+   Gli elenchi
    ========================================================================== */
-.group { margin-top: 3rem; }
-.group:first-child { margin-top: 2.75rem; }
-details.group > summary { cursor: pointer; list-style: none; }
-details.group > summary::-webkit-details-marker { display: none; }
+.block { margin-top: 2.75rem; }
+details.block > summary { list-style: none; cursor: pointer; }
+details.block > summary::-webkit-details-marker { display: none; }
 
-.group-head {
+/* La riga sotto il titolo di sezione è piena, non un filo: è lei a dire dove
+   comincia un elenco. Le righe dentro sono divise da fili. */
+.block-head {
   display: flex; align-items: baseline; gap: 0.625rem;
-  padding-bottom: 0.625rem;
-  border-bottom: 1px solid var(--ink);
+  padding-bottom: 0.5rem; border-bottom: 2px solid var(--ink);
 }
-.group-head h2 {
-  font-size: var(--t-xs); font-weight: 650;
-  text-transform: uppercase; letter-spacing: 0.1em;
-}
-.group-head .n {
-  font-size: var(--t-xs); font-variant-numeric: tabular-nums;
+.block-head .n { font: 400 var(--t-xs)/1.4 var(--mono); color: var(--ink-faint); }
+.block-head .more-link { margin-left: auto; }
+.more-link {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  font: 400 var(--t-xs)/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-faint);
+  transition: color var(--dur) var(--ease);
 }
-.group-head .link { margin-left: auto; padding-block: 0; }
+summary:hover .more-link { color: var(--ink); }
 
 .row {
-  display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
-  gap: 0 1.25rem;
-  align-items: start;
-  padding: 0.9375rem 0.5rem 0.9375rem 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 1.75rem; align-items: start;
+  padding: 1rem 0.125rem;
   border-bottom: 1px solid var(--rule);
   transition: background var(--dur) var(--ease);
 }
 .row:hover { background: var(--paper-raised); }
 
-/* Il voto, o la percentuale quando l'annuncio è stato letto per intero. Due
-   numeri sulla stessa riga sarebbero due verdetti e nessuno saprebbe a quale
-   credere: quando arriva la percentuale, il voto passa nel suggerimento. */
-.score {
-  font-size: var(--t-lg); font-weight: 600; line-height: 1.15;
-  font-variant-numeric: tabular-nums; letter-spacing: -0.03em;
-  text-align: right; padding-top: 0.0625rem;
-}
-.score[data-none="yes"] { font-size: var(--t-sm); font-weight: 400; color: var(--ink-faint); }
-.score[data-kind="fit"] { font-size: var(--t-md); }
-.score[data-kind="blocked"] { font-size: var(--t-sm); font-weight: 500; color: var(--ink-soft); }
-
-.who { min-width: 0; }
-/* Il ruolo per primo, ed è la cosa più grande della riga: è quello che stai
-   cercando. Azienda e luogo vengono dopo, sulla riga sotto. */
-.who h3 { font-size: var(--t-md); line-height: 1.3; letter-spacing: -0.016em; }
-.who .meta {
-  display: flex; align-items: baseline; gap: 0.4375rem; flex-wrap: wrap;
-  margin-top: 0.1875rem;
-  font-size: var(--t-sm); color: var(--ink-soft);
-}
-.who .meta a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
-.who .meta a:hover { color: var(--accent); border-bottom-color: var(--accent); }
-.who .meta .sep { color: var(--rule-strong); }
-/* Una descrizione breve, presa dall'annuncio. Due righe al massimo: la terza
-   sarebbe già lettura, e per leggere c'è la tendina. */
-.who .teaser {
-  margin: 0.375rem 0 0; max-width: 72ch;
-  font-size: var(--t-sm); line-height: 1.55; color: var(--ink-soft);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden;
+/* Il ruolo per primo, in grazie: è quello che stai cercando. Azienda e luogo
+   sotto, in apparato, perché rispondono a una domanda diversa. */
+.row h3 { font: 600 var(--t-md)/1.3 var(--serif); letter-spacing: -0.01em; }
+.row .who { display: flex; align-items: baseline; gap: 0.4375rem; flex-wrap: wrap; margin-top: 0.3125rem; }
+.row .who a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
+.row .who a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.row .who .sep { color: var(--rule-strong); }
+/* Una frase su cosa sia il lavoro, presa dall'annuncio. Due righe al massimo:
+   la terza sarebbe già lettura, e per leggere c'è la tendina. */
+.row .teaser {
+  margin: 0.5rem 0 0; max-width: 66ch;
+  font-size: var(--t-sm); line-height: 1.6; color: var(--ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* Ogni stato porta la parola. Il segno la raddoppia per chi non distingue i
-   colori, e nessuno dei due è il colore. */
-.state { display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 600; font-size: var(--t-xs); }
-.state::before { content: ''; width: 0.5rem; height: 0.5rem; border: 1.5px solid var(--ink-soft); }
-.state[data-k="chosen"]::before    { background: var(--ink-soft); }
-.state[data-k="partial"]::before   { background: linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%); }
-.state[data-k="skipped"]::before   { border-radius: 50%; background: none; }
-.state[data-k="opened"]::before    { border-radius: 50%; background: var(--ink-soft); }
-.state[data-k="submitted"]::before { background: var(--ink); border-color: var(--ink); border-radius: 50%; }
-.state[data-k="dead"]::before      { background: repeating-linear-gradient(45deg, var(--ink-faint) 0 2px, transparent 2px 4px); }
+/* Il verdetto: numero grande, didascalia minuscola sotto. La didascalia dice
+   di che numero si tratta, così il numero non deve indovinarlo nessuno. */
+.verdict { grid-row: 1; grid-column: 2; text-align: right; min-width: 6rem; padding-top: 0.125rem; }
+.verdict .num {
+  display: block; font: 400 1.75rem/1 var(--serif);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.verdict .num[data-band="alta"]  { color: var(--good); }
+.verdict .num[data-band="media"] { color: var(--mid); }
+.verdict .num[data-band="bassa"] { color: var(--bad); }
+.verdict .num[data-band="nessuna"] { color: var(--ink-faint); font-size: var(--t-lg); }
+.verdict .num[data-band="fermo"] {
+  color: var(--bad); font: 500 var(--t-sm)/1.9 var(--mono);
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.verdict .tag { display: block; margin-top: 0.375rem; }
 
-.pick { display: flex; gap: 0.375rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-/* Lo stato sta in fondo alla riga, non in mezzo ai dati: lì è un'etichetta che
-   si legge scorrendo la colonna, mentre dentro la riga dei metadati litigava
-   con l'azienda e il luogo per lo stesso spazio. */
-.pick .state { flex: 1 0 100%; justify-content: flex-end; color: var(--ink-soft); margin-bottom: 0.125rem; }
-.pick button { padding: 0.4375rem 0.75rem; font-size: var(--t-xs); }
-.pick button.primary { background: var(--paper-raised); border-color: var(--accent); color: var(--accent); }
-.pick button.primary:hover:not(:disabled) { background: var(--accent-wash); color: var(--accent-press); }
-.pick button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+/* Le decisioni stanno sotto il verdetto, in colonna stretta: la riga si legge
+   da sinistra a destra e finisce con quello che puoi farci. */
+/* In colonna l'altezza della riga triplicava e fra il testo e i bottoni
+   restava mezzo schermo vuoto: in fila, allineate a destra, le decisioni
+   stanno sotto il verdetto senza far crescere la riga. */
+.pick { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.3125rem; margin-top: 0.75rem; }
+.pick .state { flex: 1 0 100%; justify-content: flex-end; margin-bottom: 0.125rem; }
+.pick button { font-size: var(--t-xs); padding: 0.4375rem 0.625rem; text-align: center; }
+.pick button.quiet { border: 1px solid transparent; }
+.pick button.quiet:hover:not(:disabled) { border-color: var(--rule); }
 
-/* La tendina: tutto il resto sta qui dentro, chiuso. Su venti righe, aperto,
-   sarebbe un muro. */
-.more { grid-column: 2 / -1; margin-top: 0.375rem; }
+/* La tendina di riga. Aperta su venti righe sarebbe un muro: sta chiusa. */
+.more { grid-column: 1 / -1; margin-top: 0.625rem; }
 .more > summary {
-  list-style: none; cursor: pointer; width: fit-content;
-  font: 500 var(--t-xs)/1 var(--sans); color: var(--ink-faint);
-  display: inline-flex; align-items: center; gap: 0.4375rem;
-  padding: 0.1875rem 0;
-  transition: color var(--dur) var(--ease);
+  list-style: none; cursor: pointer; width: fit-content; padding: 0.125rem 0;
 }
 .more > summary::-webkit-details-marker { display: none; }
-.more > summary:hover { color: var(--ink); }
-.more-body { padding-top: 0.875rem; max-width: 74ch; }
-.more-body .sintesi { margin: 0 0 1rem; font-size: var(--t-sm); line-height: 1.6; }
+.more-body { padding: 1.125rem 0 0.5rem; max-width: 72ch; }
 
-/* La striscia dei fatti brevi: etichetta sopra, valore sotto, divisi da una
-   riga verticale. È il modo in cui le schede annuncio fatte bene mettono i due
-   o tre numeri che si leggono a colpo d'occhio, e costa una riga di griglia
-   invece di tre righe di elenco. I valori lunghi restano sotto, in elenco. */
-.strip {
-  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-  border: 1px solid var(--rule); border-radius: 8px;
-  margin: 0 0 1rem; overflow: hidden;
-}
-.strip > div { padding: 0.625rem 0.875rem; border-left: 1px solid var(--rule); min-width: 0; }
+/* Un blocco di prova, come in una scheda di verifica: etichetta, poi la roba. */
+.part { margin-top: 1.5rem; }
+.part:first-child { margin-top: 0; }
+.part > .tag { display: block; padding-bottom: 0.4375rem; border-bottom: 1px solid var(--ink); margin-bottom: 0.75rem; }
+.part p { margin: 0 0 0.625rem; font-size: var(--t-sm); line-height: 1.7; }
+
+/* La striscia dei fatti brevi: etichetta sopra, valore sotto, un filo in
+   mezzo. Due o tre cose che si leggono a colpo d'occhio, su una riga sola. */
+.strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--rule); }
+.strip > div { padding: 0.5rem 0.75rem; border-left: 1px solid var(--rule); min-width: 0; }
 .strip > div:first-child { border-left: 0; }
-.strip dt {
-  margin: 0 0 0.1875rem; font: 500 var(--t-xs)/1 var(--sans);
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint);
-}
-.strip dd { margin: 0; font-size: var(--t-sm); line-height: 1.4; }
+.strip dt { margin: 0 0 0.25rem; }
+.strip dd { margin: 0; font-size: var(--t-sm); line-height: 1.35; }
 
-.pairs { display: grid; gap: 0; margin: 0 0 1rem; }
-.pair {
-  display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 0.75rem;
-  padding: 0.4375rem 0; border-top: 1px solid var(--rule);
-  font-size: var(--t-sm);
-}
-.pair dt { margin: 0; color: var(--ink-faint); }
+.pairs { margin: 0.75rem 0 0; }
+.pair { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.75rem; padding: 0.375rem 0; border-top: 1px solid var(--rule); font-size: var(--t-sm); }
+.pair dt { margin: 0; }
 .pair dd { margin: 0; min-width: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
 .pair dd a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in oklch, var(--accent) 35%, transparent); }
 .pair dd a:hover { border-bottom-color: var(--accent); }
 
-@media (max-width: 52rem) {
-  .strip { grid-auto-flow: row; grid-auto-columns: auto; }
+/* Un requisito è una prova: numero nel margine, il testo citato alla lettera,
+   l'esito a destra in parola. */
+.req {
+  display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  gap: 0 0.75rem; align-items: baseline;
+  padding: 0.5625rem 0; border-bottom: 1px solid var(--rule);
+}
+.req .i { font: 400 var(--t-xs)/1.7 var(--mono); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.req q { font-size: var(--t-sm); line-height: 1.55; quotes: '\201C' '\201D'; }
+.req .nota { margin: 0.25rem 0 0; font: 400 var(--t-xs)/1.55 var(--sans); color: var(--ink-soft); }
+.req .esito { font: 500 var(--t-xs)/1.7 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; text-align: right; white-space: nowrap; }
+.req .esito[data-k="si"] { color: var(--good); }
+.req .esito[data-k="in parte"] { color: var(--mid); }
+.req .esito[data-k="no"] { color: var(--bad); }
+.req .esito .blocca { display: block; color: var(--bad); }
+
+.hooks ul { margin: 0; padding-left: 1.125rem; }
+.hooks li { font-size: var(--t-sm); line-height: 1.6; margin-bottom: 0.5rem; }
+.hooks li span { color: var(--ink-soft); }
+
+/* Lo stato di una riga: parola, e un segno geometrico che la raddoppia per chi
+   non distingue i colori. Nessuno dei due è il colore. */
+.state {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  font: 500 var(--t-xs)/1.5 var(--mono); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.state::before { content: ''; width: 0.4375rem; height: 0.4375rem; border: 1.5px solid currentColor; flex: none; }
+.state[data-k="chosen"]::before { background: currentColor; }
+.state[data-k="partial"]::before { background: linear-gradient(135deg, currentColor 50%, transparent 50%); }
+.state[data-k="skipped"]::before { border-radius: 50%; background: none; }
+.state[data-k="opened"]::before { border-radius: 50%; background: currentColor; }
+.state[data-k="submitted"]::before { background: currentColor; border-radius: 50%; }
+.state[data-k="dead"]::before { background: repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 4px); }
+
+/* Le fonti della ricerca: stesso elenco, apparato al posto della prosa. */
+.fonte { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 1rem; align-items: baseline; padding: 0.5625rem 0.125rem; border-bottom: 1px solid var(--rule); }
+.fonte b { font: 500 var(--t-sm)/1.4 var(--sans); }
+.fonte .esempi { display: block; margin-top: 0.1875rem; }
+.fonte .n { font: 400 var(--t-xs)/1.7 var(--mono); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+.say { margin: 0.875rem 0 0; font-size: var(--t-sm); color: var(--ink-soft); max-width: 64ch; }
+
+/* ==========================================================================
+   Schede: conferma, guasto, registro, profilo
+   ========================================================================== */
+.card { border: 1px solid var(--ink); background: var(--paper-raised); padding: 1.375rem 1.5rem 1.5rem; margin-top: 2rem; }
+.card > .tag { display: block; margin-bottom: 0.625rem; }
+.card h3 { font: 600 var(--t-lg)/1.25 var(--serif); letter-spacing: -0.016em; }
+.card > p { margin: 0.5rem 0 0; color: var(--ink-soft); max-width: 60ch; font-size: var(--t-sm); line-height: 1.7; }
+.card .facts { margin: 1.25rem 0 0; }
+.card .pair { grid-template-columns: 9.5rem minmax(0, 1fr); }
+.card-actions { display: flex; gap: 0.5rem; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; }
+.card.fail { border-width: 2px; }
+.card .marks { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.875rem; }
+.mark-box { font: 500 var(--t-xs)/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.375rem 0.5rem; border: 1px solid var(--ink); }
+.mark-box.solid { background: var(--ink); color: var(--paper); }
+
+code { font: 400 0.92em/1.7 var(--mono); background: var(--paper-sunk); border: 1px solid var(--rule); padding: 0.0625rem 0.3125rem; overflow-wrap: anywhere; }
+
+.warn { margin-top: 1.125rem; padding: 0.6875rem 0.8125rem; border: 1px solid var(--rule-strong); background: var(--paper-sunk); font-size: var(--t-sm); line-height: 1.65; max-width: 66ch; }
+
+details.raw { margin-top: 1.25rem; border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+details.raw > summary { list-style: none; cursor: pointer; }
+details.raw > summary::-webkit-details-marker { display: none; }
+details.raw pre { font: 400 var(--t-xs)/1.7 var(--mono); background: var(--paper-sunk); border: 1px solid var(--rule); color: var(--ink-soft); padding: 0.8125rem; max-height: 16rem; overflow: auto; margin: 0.75rem 0 0; white-space: pre-wrap; word-break: break-word; }
+
+/* Il registro dell'esecuzione */
+.run { margin-top: 2rem; border: 1px solid var(--rule); }
+.run-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.5625rem 0.875rem; background: var(--paper-sunk); border-bottom: 1px solid var(--rule); }
+.run-head .beat { width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--ink-faint); flex: none; }
+.run[data-live="yes"] .beat { background: var(--accent); animation: beat 1.4s var(--ease) infinite; }
+@keyframes beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+.run-log { font: 400 var(--t-xs)/1.75 var(--mono); color: var(--ink-soft); max-height: 11rem; overflow-y: auto; white-space: pre-wrap; word-break: break-word; padding: 0.6875rem 0.875rem; }
+.run-log .cur { color: var(--ink); }
+
+/* Il profilo: riassunto in cima, il resto una scheda per volta. */
+.io { display: none; margin-top: 2.5rem; }
+.io[data-open="yes"] { display: block; }
+.io-lead { font: 400 var(--t-md)/1.65 var(--serif); max-width: 58ch; margin: 1rem 0 2rem; }
+.io-lead b { font-weight: 600; }
+.io-grid { display: grid; grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr); gap: 0 2.5rem; align-items: start; }
+.io-tabs { display: flex; flex-direction: column; gap: 1px; }
+.io-tab {
+  appearance: none; border: 0; background: none; cursor: pointer; text-align: left;
+  font: 400 var(--t-sm)/1.35 var(--sans); color: var(--ink-soft);
+  padding: 0.4375rem 0.5rem; border-radius: 3px;
+  display: flex; align-items: baseline; gap: 0.5rem;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.io-tab:hover { background: var(--paper-raised); color: var(--ink); }
+.io-tab[aria-selected="true"], .io-tab[aria-selected="true"]:hover { background: var(--ink); color: var(--paper); font-weight: 500; }
+.io-tab .n { margin-left: auto; font: 400 var(--t-xs)/1 var(--mono); opacity: 0.6; }
+.io-panel h3 { font: 600 var(--t-md)/1.3 var(--serif); padding-bottom: 0.4375rem; border-bottom: 1px solid var(--ink); margin-bottom: 0.75rem; }
+.io-panel p { margin: 0 0 0.75rem; font-size: var(--t-sm); line-height: 1.7; max-width: 62ch; color: var(--ink-soft); }
+.io-panel ul { margin: 0; padding: 0; list-style: none; max-width: 64ch; }
+.io-panel li { font-size: var(--t-sm); line-height: 1.6; padding: 0.4375rem 0 0.4375rem 1.375rem; text-indent: -1.375rem; border-top: 1px solid var(--rule); color: var(--ink-soft); }
+.io-panel li::before { content: '—'; display: inline-block; width: 1.375rem; text-indent: 0; color: var(--ink-faint); }
+.io-panel li b { font-weight: 600; color: var(--ink); }
+/* I divieti non sono qualità in meno: sono il perimetro entro cui tutto il
+   resto è vero. Segno diverso, e il segno lo si vede prima della riga. */
+.io-panel[data-guard="yes"] li::before { content: '✗'; color: var(--bad); }
+
+/* Vuoto e caricamento */
+.blank { padding: 3rem 0 4rem; max-width: 54ch; }
+.blank h2 { font: 600 var(--t-lg)/1.25 var(--serif); }
+.blank > p { margin: 0.75rem 0 1.75rem; color: var(--ink-soft); font-size: var(--t-sm); }
+.blank ol { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.blank li { counter-increment: s; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0.5rem; padding: 0.625rem 0; border-top: 1px solid var(--rule); font-size: var(--t-sm); color: var(--ink-soft); }
+.blank li::before { content: '0' counter(s); font: 400 var(--t-xs)/1.8 var(--mono); color: var(--ink-faint); }
+.blank li b { color: var(--ink); font-weight: 600; }
+
+.skel { border-bottom: 1px solid var(--rule); padding: 1rem 0.125rem; display: grid; grid-template-columns: minmax(0, 1fr) 4rem; gap: 1.75rem; }
+.skel i { display: block; height: 0.6875rem; background: var(--rule); }
+.skel i + i { margin-top: 0.5rem; width: 55%; }
+.skel > i { height: 1.5rem; margin: 0; }
+
+@media (max-width: 60rem) {
+  .desk { grid-template-columns: 1fr; }
+  .rail {
+    position: static; height: auto; flex-direction: row; align-items: center;
+    border-right: 0; border-bottom: 1px solid var(--rule);
+    overflow-x: auto; padding: 0.75rem; gap: 0.75rem;
+  }
+  .brand { padding: 0 0.5rem 0; }
+  .rail-group { padding: 0; display: flex; gap: 0.25rem; }
+  .rail-group > .tag { display: none; }
+  .rail .foot { margin: 0; padding: 0; }
+  .step { width: auto; min-width: 8.5rem; }
+  .pick { min-width: 8rem; }
+  .strip { grid-auto-flow: row; }
   .strip > div { border-left: 0; border-top: 1px solid var(--rule); }
   .strip > div:first-child { border-top: 0; }
+  .pair, .card .pair { grid-template-columns: 1fr; gap: 0.125rem; }
+  .io-grid { grid-template-columns: 1fr; gap: 1.25rem; }
+  .io-tabs { flex-direction: row; flex-wrap: wrap; }
+  .io-tab .n { display: none; }
+  .open h2 { font-size: var(--t-lg); }
 }
 
-.req { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); gap: 0 0.625rem; padding: 0.5rem 0; border-top: 1px solid var(--rule); }
-.req .mark { font: 400 var(--t-sm)/1.5 var(--mono); color: var(--ink-soft); text-align: center; }
-.req q { font-size: var(--t-sm); line-height: 1.5; quotes: '"' '"'; }
-.req .nota { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; margin: 0.1875rem 0 0; }
-.req .nota b { font-weight: 640; color: var(--ink); }
-
-.agganci { margin-top: 1rem; border-top: 1px solid var(--rule-strong); padding-top: 0.75rem; }
-.agganci h4 { font: 500 var(--t-xs)/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.625rem; }
-.agganci ul { margin: 0; padding: 0; list-style: none; }
-.agganci li { font-size: var(--t-sm); line-height: 1.55; margin-bottom: 0.4375rem; }
-.agganci li span { color: var(--ink-soft); }
-
-/* ==========================================================================
-   Le fonti — chiuse, perché sono configurazione, non lavoro del giorno
-   ========================================================================== */
-.fonte {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 1rem; align-items: baseline;
-  padding: 0.5rem 0; border-top: 1px solid var(--rule);
-  font-size: var(--t-sm);
-}
-.fonte-nome { font-weight: 550; }
-.fonte-esempi { color: var(--ink-faint); font-weight: 400; font-size: var(--t-xs); }
-.fonte-n { font-size: var(--t-xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-
-.say { margin: 0.875rem 0 0; font-size: var(--t-sm); color: var(--ink-soft); max-width: 68ch; }
-
-/* ==========================================================================
-   Vuoto e caricamento
-   ========================================================================== */
-.blank { padding: 3rem 0 4rem; max-width: 56ch; }
-.blank h2 { font-size: var(--t-lg); letter-spacing: -0.02em; }
-.blank p { margin: 0.75rem 0 1.5rem; color: var(--ink-soft); }
-.blank ol { margin: 0; padding: 0; list-style: none; counter-reset: s; }
-.blank li {
-  counter-increment: s;
-  display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.5rem;
-  padding: 0.6875rem 0; border-top: 1px solid var(--rule);
-  font-size: var(--t-sm); color: var(--ink-soft);
-}
-.blank li::before {
-  content: '0' counter(s);
-  font-variant-numeric: tabular-nums; color: var(--ink-faint);
-}
-.blank li b { color: var(--ink); font-weight: 620; }
-
-.skel { border-bottom: 1px solid var(--rule); padding: 1.125rem 0; display: grid; grid-template-columns: 3.25rem 1fr; gap: 1.25rem; }
-.skel i { display: block; height: 0.75rem; border-radius: 3px; background: var(--rule); }
-.skel i + i { margin-top: 0.5625rem; width: 58%; }
-.skel i:first-child { width: 2rem; margin-left: auto; }
-
-@media (max-width: 52rem) {
-  .row { grid-template-columns: 3rem minmax(0, 1fr); }
-  .pick { grid-column: 1 / -1; padding-top: 0.875rem; justify-content: flex-start; }
-  .fact, .pair { grid-template-columns: 1fr; gap: 0.125rem; }
-  .act-head h2 { font-size: var(--t-lg); }
+/* Sul telefono la riga non può restare a due colonne: il verdetto si prende
+   sei rem fisse e al titolo ne restano poche, così "Forward Deployed Engineer"
+   andava a capo tre volte e la frase sull'annuncio si tagliava a due parole.
+   Una colonna sola, e il verdetto diventa una riga: numero e didascalia in
+   fila, sotto l'azienda. */
+@media (max-width: 40rem) {
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .verdict {
+    grid-column: 1; text-align: left; min-width: 0; padding-top: 0;
+    display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.75rem;
+  }
+  .verdict .num { font-size: var(--t-lg); }
+  .verdict .tag { margin-top: 0; }
+  .pick { grid-column: 1; justify-content: flex-start; }
+  .pick .state { justify-content: flex-start; }
 }
 </style>
 </head>
 <body>
 
-<header class="board">
-  <div class="wrap">
-    <div class="crest">
-      <img src="/caronte.jpg" alt="" width="32" height="40">
-      <h1>Caronte</h1>
-      <span class="claim">L'ultimo passo lo fai tu</span>
+<div class="desk">
+
+  <nav class="rail" aria-label="Le fasi e gli strumenti">
+    <div class="brand">
+      <img src="/caronte.jpg" alt="" width="30" height="38">
+      <span><b>Caronte</b><span class="tag">banco di verifica</span></span>
     </div>
-    <nav class="track" id="track" aria-label="Le cinque fasi"></nav>
-  </div>
-</header>
 
-<div class="util">
-  <div class="wrap util-in">
-    <button class="link" id="io-toggle" aria-expanded="false" aria-controls="io">
-      Il mio profilo <i class="caret" aria-hidden="true"></i>
-    </button>
-    <button class="link" id="restore" hidden>Ripristina la coda</button>
-  </div>
+    <div class="rail-group">
+      <span class="tag">Le fasi</span>
+      <div id="track"></div>
+    </div>
+
+    <div class="rail-group foot">
+      <button class="rail-link" id="io-toggle" aria-expanded="false" aria-controls="io">
+        Il mio profilo <i class="caret mark" aria-hidden="true"></i>
+      </button>
+      <button class="rail-link" id="restore" hidden>Ripristina la coda</button>
+    </div>
+  </nav>
+
+  <main class="bench">
+    <div class="crumb">
+      <span class="where" id="where">carico…</span>
+      <span class="spacer"></span>
+      <span id="crumb-act"></span>
+    </div>
+
+    <div class="sheet">
+      <div id="setup"></div>
+      <section class="open" id="act"></section>
+      <section class="io" id="io" data-open="no" aria-label="Il mio profilo"></section>
+      <div id="confirm"></div>
+      <div id="run"></div>
+      <div id="fail"></div>
+      <div id="list"></div>
+    </div>
+  </main>
+
 </div>
-
-<section class="io" id="io" data-open="no">
-  <div class="wrap io-in" id="io-in">carico…</div>
-</section>
-
-<main class="wrap">
-  <div id="setup"></div>
-  <section class="act" id="act"></section>
-  <div id="confirm"></div>
-  <div id="run"></div>
-  <div id="fail"></div>
-  <div id="list"></div>
-</main>
 
 <script>
 'use strict';
@@ -688,12 +585,13 @@ let state = null;
 let pending = null;   // conferma in attesa
 let poll = null;      // id dell'intervallo di polling
 let busy = false;
-// La fase su cui punta il pannello. Parte da quella consigliata, ma la plancia
+// La fase su cui punta il banco. Parte da quella consigliata, ma la rotaia
 // può spostarla su qualunque altra.
 let selected = null;
+let crumbWatch = null;   // tiene d'occhio se il bottone vero è ancora a schermo
 
 // Una casella, un numero. Due numeri per casella obbligavano a leggere invece
-// che a guardare, ed era il contrario del punto di una plancia.
+// che a guardare, ed era il contrario del punto di una rotaia.
 const STAGES = [
   { id: 'search', name: 'Cerca',     count: (s) => `${s.inPlay} in gioco` },
   { id: 'triage', name: 'Valuta',    count: (s) => `${s.readyToTriage} da valutare` },
@@ -742,27 +640,23 @@ async function api(path, opts) {
 }
 
 // ---------------------------------------------------------------------------
-// Plancia
+// La rotaia
 // ---------------------------------------------------------------------------
 
 /**
- * Ogni casella della plancia sceglie la sua fase.
+ * Ogni casella della rotaia sceglie la sua fase.
  *
- * Il consiglio resta — la fase consigliata porta scritto "adesso" — ma non è
- * un cancello: prima si poteva solo fare il passo successivo, e così non si
+ * Il consiglio resta — la fase consigliata porta scritto "ora" — ma non è un
+ * cancello: prima si poteva solo fare il passo successivo, e così non si
  * rilanciava una ricerca finché c'erano annunci da valutare.
  */
 function drawTrack() {
   const s = state.stats;
   $('track').innerHTML = STAGES.map((st, i) => `
     <button class="step" data-stage="${esc(st.id)}" aria-pressed="${selected === st.id}">
-      <span class="step-top">
-        <span class="step-n">0${i + 1}</span>
-        <span class="step-name">${esc(st.name)}</span>
-      </span>
-      <span class="step-sub">${esc(st.count(s))}${
-        state.next === st.id ? ' <span class="now">· adesso</span>' : ''
-      }</span>
+      <span class="step-n">0${i + 1}</span>
+      <span class="step-name">${esc(st.name)}</span>
+      <span class="step-sub">${esc(st.count(s))}${state.next === st.id ? ' <span class="now">· ora</span>' : ''}</span>
     </button>`).join('');
 
   document.querySelectorAll('[data-stage]').forEach((b) => b.addEventListener('click', () => {
@@ -770,7 +664,7 @@ function drawTrack() {
     $('confirm').innerHTML = '';
     drawTrack();
     drawAct();
-    // La lista cambia con la fase: su Cerca mostra le fonti, altrove i ruoli.
+    // L'elenco cambia con la fase: su Cerca mostra le fonti, altrove i ruoli.
     drawList();
   }));
 }
@@ -786,8 +680,8 @@ const SPIEGA = {
     const n = quanti === null ? 5 : quanti;
     if (n === 0) return 'Con zero non importa niente. Scrivi quanti annunci vuoi cercare.';
     const etichette = focusLabels();
-    const dove = etichette.length ? `, fra quelli che parlano di ${etichette.join(', ')}` : '';
-    return `Cerca ${n === 1 ? 'un annuncio' : `${n} annunci`}${dove}, uno per portale a turno.`;
+    const fra = etichette.length ? `, fra quelli che parlano di ${etichette.join(', ')}` : '';
+    return `Cerca ${n === 1 ? 'un annuncio' : `${n} annunci`}${fra}, uno per portale a turno.`;
   },
   triage: (s) => {
     const n = quanti === null ? s.readyToTriage : quanti;
@@ -882,10 +776,10 @@ function drawAct() {
   // Su Cerca il campo non ha tetto: quanti annunci esistano là fuori non si sa
   // prima di cercarli. Sulle altre due il tetto è quello che c'è in coda.
   const qty = id === 'search'
-    ? `<span class="qty"><label for="lim">Quanti</label>
+    ? `<span class="qty"><label class="tag" for="lim">Quanti</label>
        <input id="lim" type="number" min="1" value="${quanti === null ? 5 : quanti}"></span>`
     : (id === 'triage' || id === 'deep') && disponibili > 0
-    ? `<span class="qty"><label for="lim">Quanti</label>
+    ? `<span class="qty"><label class="tag" for="lim">Quanti</label>
        <input id="lim" type="number" min="1" max="${Math.max(1, disponibili)}"
               value="${quanti === null ? Math.max(1, disponibili) : quanti}"></span>`
     : '';
@@ -894,30 +788,28 @@ function drawAct() {
     ? `<div class="filtri">
         ${FILTRI.map((f) => `
           <div class="frow" role="group" aria-label="${esc(f.nome)}">
-            <span class="fname">${esc(f.nome)}</span>
+            <span class="tag">${esc(f.nome)}</span>
             ${f.voci.map((v) => `<button class="chip" data-chip="${esc(v.id)}"
                 aria-pressed="${scelti.has(v.id)}">${esc(v.label)}</button>`).join('')}
           </div>`).join('')}
         <div class="frow">
-          <span class="fname">Parole</span>
+          <span class="tag">Parole</span>
           <span class="focus"><label class="sr" for="foc">altre parole da cercare</label>
             <input id="foc" type="text" value="${esc(focus)}"
                    placeholder="marketing, social — separale con la virgola"
                    autocomplete="off" spellcheck="false"></span>
         </div>
         <div class="frow" role="group" aria-label="Ricerca web">
-          <span class="fname">Web</span>
+          <span class="tag">Web</span>
           <button class="chip" data-web aria-pressed="${cercaWeb}">Cerca anche sul web</button>
         </div>
       </div>`
     : '';
 
   $('act').innerHTML = `
-    <div class="act-head">
-      <h2>${esc(stage ? stage.name : id)}</h2>
-      <p id="act-say">${esc(SPIEGA[id](s))}</p>
-    </div>
-    <div class="act-bar">
+    <h2>${esc(stage ? stage.name : id)}</h2>
+    <p id="act-say">${esc(SPIEGA[id](s))}</p>
+    <div class="open-bar">
       ${qty}
       <button class="primary" data-run="${esc(id)}">${esc(phase ? phase.label : id)}</button>
       ${foc}
@@ -960,6 +852,23 @@ function drawAct() {
     });
   });
 
+  // La briciola in alto dice dove sei e quanto c'è, e porta la stessa azione:
+  // scorrendo un elenco lungo il bottone resta a portata.
+  $('where').innerHTML = `<b>${esc(stage ? stage.name : id)}</b>
+    <span class="sep">/</span> ${esc(stage ? stage.count(s) : '')}`;
+  $('crumb-act').innerHTML = `<button class="primary" data-run="${esc(id)}">${esc(phase ? phase.label : id)}</button>`;
+  // Il bottone in alto serve quando quello vero è scivolato fuori schermo.
+  // Finché si vedono tutti e due è solo un doppione, quindi compare scorrendo.
+  const vero = $('act').querySelector('.open-bar');
+  $('crumb-act').style.visibility = 'hidden';
+  if (vero) {
+    if (crumbWatch) crumbWatch.disconnect();
+    crumbWatch = new IntersectionObserver(([e]) => {
+      $('crumb-act').style.visibility = e.isIntersecting ? 'hidden' : 'visible';
+    }, { rootMargin: '-48px 0px 0px 0px' });
+    crumbWatch.observe(vero);
+  }
+
   $('restore').hidden = !state.canRestore;
   document.querySelectorAll('[data-run]').forEach((b) => {
     b.disabled = busy;
@@ -974,16 +883,16 @@ function drawAct() {
 /**
  * Il profilo, una sezione alla volta.
  *
- * Nove sezioni aperte insieme erano un muro di testo in tre colonne: si vedeva
- * tutto e non si leggeva niente. Il riassunto sta in cima, sempre; il resto si
- * apre una scheda per volta. Viene dal disco, non da un modello: riassumerlo
- * costerebbe token e, peggio, farebbe deriva proprio nella sezione dei
- * divieti, dove "non programmo" non può ammorbidirsi in "profilo tecnico".
+ * Nove sezioni aperte insieme erano un muro di testo: si vedeva tutto e non si
+ * leggeva niente. Il riassunto sta in cima, sempre; il resto si apre una
+ * scheda per volta. Viene dal disco, non da un modello: riassumerlo costerebbe
+ * token e, peggio, farebbe deriva proprio nella sezione dei divieti, dove
+ * "non programmo" non può ammorbidirsi in "profilo tecnico".
  */
 let profilo = null;
 
 async function apriProfilo() {
-  const box = $('io-in');
+  const box = $('io');
   if (!profilo) {
     const { body, status } = await api('/api/profile');
     if (status !== 200) { box.innerHTML = `<p class="io-lead">${esc(body.error || 'Profilo non disponibile.')}</p>`; return; }
@@ -999,6 +908,7 @@ async function apriProfilo() {
   const schede = sezioni.filter((s) => s !== lead);
 
   box.innerHTML = `
+    <span class="tag">Il mio profilo</span>
     ${lead ? `<p class="io-lead">${forte(lead.prose)}</p>` : ''}
     <div class="io-grid">
       <div class="io-tabs" role="tablist" aria-label="Sezioni del profilo">
@@ -1008,7 +918,7 @@ async function apriProfilo() {
             ${esc(s.title)}<span class="n">${s.points.length || ''}</span>
           </button>`).join('')}
       </div>
-      <div class="io-panes">
+      <div>
         ${schede.map((s, i) => `
           <div class="io-panel" role="tabpanel" id="iopan-${i}" aria-labelledby="iotab-${i}"
                data-guard="${/non posso|non puoi|manca/i.test(s.title) ? 'yes' : 'no'}" ${i === 0 ? '' : 'hidden'}>
@@ -1020,13 +930,11 @@ async function apriProfilo() {
     </div>`;
 
   const tabs = [...box.querySelectorAll('[data-tab]')];
-  const mostra = (i) => {
-    tabs.forEach((t, j) => {
-      t.setAttribute('aria-selected', String(i === j));
-      t.tabIndex = i === j ? 0 : -1;
-      $(`iopan-${j}`).hidden = i !== j;
-    });
-  };
+  const mostra = (i) => tabs.forEach((t, j) => {
+    t.setAttribute('aria-selected', String(i === j));
+    t.tabIndex = i === j ? 0 : -1;
+    $(`iopan-${j}`).hidden = i !== j;
+  });
   tabs.forEach((t, i) => {
     t.addEventListener('click', () => mostra(i));
     t.addEventListener('keydown', (e) => {
@@ -1070,19 +978,19 @@ async function askConfirm(phaseId, slug) {
 function drawConfirm(p) {
   $('fail').innerHTML = '';
   $('confirm').innerHTML = `
-    <section class="panel" role="alertdialog" aria-labelledby="ct">
-      <span class="kicker">Conferma prima di procedere</span>
+    <section class="card" role="alertdialog" aria-labelledby="ct">
+      <span class="tag">Conferma prima di procedere</span>
       <h3 id="ct">${esc(p.label)}</h3>
       <p>${esc(p.blurb)}</p>
       <dl class="facts">
-        <div class="fact"><dt>Su cosa agisce</dt><dd>${esc(p.affects)}</dd></div>
-        <div class="fact"><dt>File che tocca</dt><dd>${(p.writes || []).map((w) => `<code>${esc(w)}</code>`).join(' ')}</dd></div>
-        <div class="fact"><dt>Costo</dt><dd>${esc(p.cost || '—')}${p.model ? ` · modello <b>${esc(p.model)}</b>` : ''}</dd></div>
-        <div class="fact"><dt>Rischio</dt><dd>${esc(RISK[p.risk] || p.risk || '—')}</dd></div>
-        <div class="fact"><dt>Si torna indietro</dt><dd>${p.reversible === false ? 'No' : esc(p.rollback || 'Sì')}</dd></div>
+        <div class="pair"><dt class="tag">Su cosa agisce</dt><dd>${esc(p.affects)}</dd></div>
+        <div class="pair"><dt class="tag">File che tocca</dt><dd>${(p.writes || []).map((w) => `<code>${esc(w)}</code>`).join(' ')}</dd></div>
+        <div class="pair"><dt class="tag">Costo</dt><dd>${esc(p.cost || '—')}${p.model ? ` · modello ${esc(p.model)}` : ''}</dd></div>
+        <div class="pair"><dt class="tag">Rischio</dt><dd>${esc(RISK[p.risk] || p.risk || '—')}</dd></div>
+        <div class="pair"><dt class="tag">Si torna indietro</dt><dd>${p.reversible === false ? 'No' : esc(p.rollback || 'Sì')}</dd></div>
       </dl>
       ${p.warning ? `<div class="warn"><b>Attenzione.</b> ${esc(p.warning)}</div>` : ''}
-      <div class="panel-actions">
+      <div class="card-actions">
         <button class="primary" id="go">Procedi</button>
         <button class="quiet" id="no">Annulla</button>
       </div>
@@ -1141,7 +1049,7 @@ function drawRun(run) {
     <section class="run" data-live="${live ? 'yes' : 'no'}">
       <div class="run-head">
         <span class="beat" aria-hidden="true"></span>
-        <span>${esc(phase ? phase.label : run.phase)} · ${word}</span>
+        <span class="tag">${esc(phase ? phase.label : run.phase)} · ${word}</span>
       </div>
       <div class="run-log" id="rlog">${lines.map((l, i) =>
         `<span class="${i === lines.length - 1 && live ? 'cur' : ''}">${esc(l)}</span>`
@@ -1153,30 +1061,33 @@ function drawRun(run) {
 
 /** Un avviso breve, per quello che non merita il blocco d'errore intero. */
 function drawNote(text) {
-  $('fail').innerHTML = `<section class="panel" role="status"><p>${esc(text)}</p></section>`;
+  $('fail').innerHTML = `<section class="card" role="status"><p>${esc(text)}</p></section>`;
 }
 
 function drawFail(e) {
   if (!e) return;
   $('fail').innerHTML = `
-    <section class="panel fail" role="alert">
-      <div class="tags">
-        <span class="tag">Si è fermato</span>
-        <span class="tag open">${e.blocking ? 'blocca il resto' : 'non blocca il resto'}</span>
-        <span class="tag open">${esc(e.phaseLabel)}${e.step ? ` · ${esc(e.step)}` : ''}</span>
+    <section class="card fail" role="alert">
+      <div class="marks">
+        <span class="mark-box solid">Si è fermato</span>
+        <span class="mark-box">${e.blocking ? 'blocca il resto' : 'non blocca il resto'}</span>
+        <span class="mark-box">${esc(e.phaseLabel)}${e.step ? ` · ${esc(e.step)}` : ''}</span>
       </div>
       <h3>${esc(e.explain)}</h3>
       <p>${esc(e.message)}</p>
       <dl class="facts">
-        <div class="fact"><dt>File coinvolti</dt><dd>${(e.files || []).map((f) => `<code>${esc(f)}</code>`).join(' ') || '—'}</dd></div>
-        <div class="fact"><dt>Cosa conviene fare</dt><dd>${esc(e.hint)}</dd></div>
+        <div class="pair"><dt class="tag">File coinvolti</dt><dd>${(e.files || []).map((f) => `<code>${esc(f)}</code>`).join(' ') || '—'}</dd></div>
+        <div class="pair"><dt class="tag">Cosa conviene fare</dt><dd>${esc(e.hint)}</dd></div>
       </dl>
-      <div class="panel-actions">
+      <div class="card-actions">
         ${(e.actions || []).includes('riprova') ? '<button class="primary" data-fix="riprova">Riprova</button>' : ''}
         ${(e.actions || []).includes('ripristina') ? '<button data-fix="ripristina">Ripristina</button>' : ''}
         <button class="quiet" data-fix="chiudi">Chiudi</button>
       </div>
-      <details class="raw"><summary>Log completo</summary><pre>${esc(e.output || '')}</pre></details>
+      <details class="raw">
+        <summary><span class="more-link"><span class="chiuso">Log completo</span><span class="aperto">Chiudi il log</span> <i class="caret" aria-hidden="true"></i></span></summary>
+        <pre>${esc(e.output || '')}</pre>
+      </details>
     </section>`;
 
   document.querySelectorAll('[data-fix]').forEach((b) => b.addEventListener('click', () => {
@@ -1224,13 +1135,15 @@ function drawList() {
   state.rows.forEach((r) => by[bucket(r)].push(r));
 
   $('list').innerHTML = GROUPS.filter((g) => by[g.key].length).map((g) => {
-    const head = `<div class="group-head"><h2>${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${
-      g.key === 'skipped' ? '<span class="link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>' : ''
+    const head = `<div class="block-head"><h2 class="tag">${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${
+      g.key === 'skipped'
+        ? '<span class="more-link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>'
+        : ''
     }</div>`;
     const body = by[g.key].map(rowHtml).join('');
     return g.key === 'skipped'
-      ? `<details class="group"><summary>${head}</summary>${body}</details>`
-      : `<section class="group">${head}${body}</section>`;
+      ? `<details class="block"><summary>${head}</summary>${body}</details>`
+      : `<section class="block">${head}${body}</section>`;
   }).join('');
 
   wireRows();
@@ -1288,54 +1201,69 @@ function azioni(r) {
     ${r.apply === 'chosen' || r.apply === 'partial' ? `<button class="quiet" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>` : ''}`;
 }
 
-// Quando l'annuncio è stato letto per intero, il voto da 1 a 5 lascia il posto
-// al suo risultato: due numeri sulla stessa riga sarebbero due verdetti, e chi
-// legge non saprebbe a quale credere. Il voto resta nel suggerimento.
+/**
+ * Il verdetto: un numero, e la parola che dice di che numero si tratta.
+ *
+ * Quando l'annuncio è stato letto per intero il voto da 1 a 5 lascia il posto
+ * alla percentuale di requisiti raggiunti: due numeri sulla stessa riga
+ * sarebbero due verdetti e chi legge non saprebbe a quale credere. Il voto
+ * resta nel suggerimento al passaggio del mouse.
+ */
 function verdetto(r) {
+  const voto = r.score === '' || r.score === null ? null : Number(r.score);
   if (!r.fit) {
-    const none = r.score === '' || r.score === null;
-    return `<div class="score" data-none="${none ? 'yes' : 'no'}">${none ? '—' : esc(Number(r.score).toFixed(1))}</div>`;
+    if (voto === null) return '<div class="verdict"><span class="num" data-band="nessuna">—</span><span class="tag">non valutato</span></div>';
+    const band = voto >= 3.5 ? 'alta' : voto >= 2.5 ? 'media' : 'bassa';
+    return `<div class="verdict"><span class="num" data-band="${band}">${voto.toFixed(1)}</span><span class="tag">voto su 5</span></div>`;
   }
-  const voto = r.score === '' ? '' : ` · voto ${Number(r.score).toFixed(1)}`;
+  const coda = voto === null ? '' : ` · voto ${voto.toFixed(1)}`;
   if (r.fit.blocked) {
-    return `<div class="score" data-none="no" data-kind="blocked" title="Requisito bloccante non soddisfatto${esc(voto)}">no</div>`;
+    return `<div class="verdict" title="Requisito bloccante non soddisfatto${esc(coda)}">
+      <span class="num" data-band="fermo">fermo</span><span class="tag">requisito bloccante</span></div>`;
   }
-  return `<div class="score" data-none="no" data-kind="fit" title="${r.fit.total} requisiti letti${esc(voto)}">${r.fit.percent}%</div>`;
+  const band = r.fit.percent >= 70 ? 'alta' : r.fit.percent >= 45 ? 'media' : 'bassa';
+  return `<div class="verdict" title="${r.fit.total} requisiti letti${esc(coda)}">
+    <span class="num" data-band="${band}">${r.fit.percent}%</span><span class="tag">requisiti presi</span></div>`;
 }
 
-const SEGNO = {
-  soddisfatto:       { mark: '●', parola: 'sì' },
-  parziale:          { mark: '◐', parola: 'in parte' },
-  'non soddisfatto': { mark: '○', parola: 'no' },
-};
+const SEGNO = { soddisfatto: 'sì', parziale: 'in parte', 'non soddisfatto': 'no' };
+// La chiave per il colore non porta l'accento: un attributo con "sì" dentro un
+// selettore è una scorciatoia per rompersi.
+const SEGNO_K = { 'sì': 'si', 'in parte': 'in parte', no: 'no' };
 
-/** Cosa c'è da sapere in più: una riga, e la tendina la dice. */
+/**
+ * L'etichetta della tendina: corta e costante.
+ *
+ * Ci finiva dentro la frase del requisito bloccante, e in monospaziato
+ * maiuscolo spaziato una frase intera diventa un urlo lungo tutta la riga.
+ * Quella frase ora sta dove serve: dentro la tendina, come prima prova.
+ */
 function apertura(r) {
-  if (r.fit && !r.fit.blocked) return `Perché ${r.fit.percent}% e cosa chiede`;
-  if (r.fit && r.fit.blocked) return `Non raggiungibile: ${r.fit.blockers[0] || 'requisito bloccante'}`;
-  return 'Dettagli';
+  if (r.fit) return `Le prove · ${r.fit.total}`;
+  return 'La scheda';
 }
 
 function rowHtml(r) {
   const parola = STATE_WORD[r.apply];
   const luogo = dove(r.location);
+  const atti = azioni(r);
   return `
   <article class="row">
-    ${verdetto(r)}
-    <div class="who">
+    <div>
       <h3>${esc(r.role || 'Ruolo non indicato')}</h3>
-      <div class="meta">
+      <div class="who tag">
         <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.company || 'Azienda ignota')}</a>
         ${luogo ? `<span class="sep">·</span><span title="${esc(r.location)}">${esc(luogo)}</span>` : ''}
       </div>
       ${r.teaser ? `<p class="teaser">${esc(r.teaser)}</p>` : ''}
     </div>
-    <div class="pick">
+    ${verdetto(r)}
+    ${parola || atti ? `<div class="pick">
       ${parola ? `<span class="state" data-k="${esc(r.apply)}">${esc(parola)}</span>` : ''}
-      ${azioni(r)}
-    </div>
+      ${atti}
+    </div>` : ''}
     <details class="more" data-more="${esc(r.slug)}" data-fit="${r.fit ? 'yes' : 'no'}">
-      <summary>${esc(apertura(r))} <i class="caret" aria-hidden="true"></i></summary>
+      <summary><span class="more-link">${esc(apertura(r))} <i class="caret" aria-hidden="true"></i></span></summary>
       <div class="more-body">carico…</div>
     </details>
   </article>`;
@@ -1344,7 +1272,7 @@ function rowHtml(r) {
 /**
  * La tendina di una riga, riempita quando la apri.
  *
- * Venti analisi spedite insieme alla plancia sarebbero un carico che nessuno
+ * Venti analisi spedite insieme all'elenco sarebbero un carico che nessuno
  * legge; una richiesta a richiesta sono gli stessi dati nel momento in cui li
  * vuoi. Quello che non richiede il disco — sede per esteso, riga di CV, link —
  * si disegna subito.
@@ -1356,47 +1284,60 @@ async function apriDettagli(det) {
 
   const r = state.rows.find((x) => x.slug === det.dataset.more);
   if (!r) { box.textContent = 'Questa riga non è più in coda.'; return; }
-  // I fatti brevi stanno nella striscia, uno accanto all'altro; quelli che
-  // occupano una riga intera restano in elenco sotto.
+
+  // I fatti brevi stanno affiancati nella striscia; quelli che occupano una
+  // riga intera restano in elenco sotto.
   const corti = [
     r.location ? ['Sede', esc(r.location)] : null,
     r.level ? ['Livello', esc(r.level)] : null,
-    ['Testo', r.jd ? 'scaricato' : 'non si è lasciato scaricare'],
+    ['Testo', r.jd ? 'scaricato' : 'non scaricato'],
     ['Documenti', r.pack === 'built' ? 'pronti' : r.pack === 'jd_failed' ? 'senza testo' : 'da preparare'],
   ].filter(Boolean);
-  const base = `
-    <dl class="strip">
-      ${corti.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
-    </dl>
-    <dl class="pairs">
-      ${r.summary_line && r.summary_line !== 'n/a' ? `<div class="pair"><dt>Riga di CV</dt><dd>${esc(r.summary_line)}</dd></div>` : ''}
-      <div class="pair"><dt>Annuncio</dt><dd><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></dd></div>
-    </dl>`;
 
-  if (det.dataset.fit !== 'yes') { box.innerHTML = base; return; }
+  const scheda = `
+    <div class="part">
+      <dl class="strip">${corti.map(([k, v]) => `<div><dt class="tag">${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+      <dl class="pairs">
+        ${r.summary_line && r.summary_line !== 'n/a' ? `<div class="pair"><dt class="tag">Riga di CV</dt><dd>${esc(r.summary_line)}</dd></div>` : ''}
+        <div class="pair"><dt class="tag">Annuncio</dt><dd><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></dd></div>
+      </dl>
+    </div>`;
+
+  if (det.dataset.fit !== 'yes') { box.innerHTML = scheda; return; }
 
   const { body, status } = await api(`/api/analysis/${encodeURIComponent(det.dataset.more)}`);
-  if (status !== 200) { box.innerHTML = `${base}<p class="nota">Questa analisi non si trova più sul disco.</p>`; return; }
+  if (status !== 200) { box.innerHTML = `${scheda}<p>Questa analisi non si trova più sul disco.</p>`; return; }
 
-  const reqs = (body.requisiti || []).map((q) => {
-    const seg = SEGNO[q.stato] || { mark: '·', parola: q.stato };
-    return `<div class="req">
-      <div class="mark" aria-hidden="true">${seg.mark}</div>
-      <div>
-        <q>${esc(q.testo)}</q>
-        <p class="nota"><b>${esc(seg.parola)}</b>${q.bloccante ? ' · bloccante' : ''}${q.perche ? ` — ${esc(q.perche)}` : ''}</p>
-      </div>
+  const fermo = r.fit && r.fit.blocked
+    ? `<p><b>Non raggiungibile:</b> ${esc(r.fit.blockers[0] || 'un requisito bloccante non è soddisfatto')}.</p>` : '';
+  const sintesi = body.sintesi || fermo
+    ? `<div class="part"><span class="tag">Il verdetto</span>${fermo}${body.sintesi ? `<p>${esc(body.sintesi)}</p>` : ''}</div>` : '';
+
+  const reqs = (body.requisiti || []).length ? `
+    <div class="part">
+      <span class="tag">Le prove — quello che l'annuncio chiede</span>
+      ${body.requisiti.map((q, i) => {
+        const parola = SEGNO[q.stato] || q.stato;
+        return `<div class="req">
+          <span class="i">${String(i + 1).padStart(2, '0')}</span>
+          <div>
+            <q>${esc(q.testo)}</q>
+            ${q.perche || q.citato === false ? `<p class="nota">${esc(q.perche || '')}${q.citato === false ? ' (non citato alla lettera)' : ''}</p>` : ''}
+          </div>
+          <span class="esito" data-k="${esc(SEGNO_K[parola] || 'altro')}">${esc(parola)}${q.bloccante ? '<span class="blocca">blocca</span>' : ''}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const hooks = `
+    <div class="part hooks">
+      <span class="tag">Cosa può dire la lettera</span>
+      ${(body.agganci || []).length
+        ? `<ul>${body.agganci.map((a) => `<li>${esc(a.punto)} <span>← ${esc(a.fatto)}</span></li>`).join('')}</ul>`
+        : '<p>Niente che regga su un fatto vero. La lettera qui non ha appigli.</p>'}
     </div>`;
-  }).join('');
 
-  const ag = (body.agganci || []).length
-    ? `<div class="agganci"><h4>Cosa può dire la lettera</h4><ul>${
-        body.agganci.map((a) => `<li>${esc(a.punto)} <span>← ${esc(a.fatto)}</span></li>`).join('')
-      }</ul></div>`
-    : `<div class="agganci"><h4>Cosa può dire la lettera</h4>
-       <p class="nota">Niente che regga su un fatto vero. La lettera qui non ha appigli.</p></div>`;
-
-  box.innerHTML = `${body.sintesi ? `<p class="sintesi">${esc(body.sintesi)}</p>` : ''}${base}${reqs}${ag}`;
+  box.innerHTML = `${sintesi}${scheda}${reqs}${hooks}`;
 }
 
 /**
@@ -1424,24 +1365,21 @@ async function drawSearchList() {
     ? `<p class="say">${esc(fonti.error)}</p>`
     : fonti.portals.map((p) => `
         <div class="fonte">
-          <span class="fonte-nome">${esc(p.id)}${p.examples.length
-            ? ` <span class="fonte-esempi">${esc(p.examples.join(', '))}${p.entries > p.examples.length ? '…' : ''}</span>` : ''}</span>
-          <span class="fonte-n">${p.entries === 1 ? '1 bacheca' : `${p.entries} bacheche`}</span>
+          <span><b>${esc(p.id)}</b>${p.examples.length
+            ? `<span class="tag esempi">${esc(p.examples.join(' · '))}${p.entries > p.examples.length ? ' …' : ''}</span>` : ''}</span>
+          <span class="n">${p.entries === 1 ? '1 bacheca' : `${p.entries} bacheche`}</span>
         </div>`).join('');
 
-  // Il numero che conta è quello delle bacheche interrogate: "12" erano le
-  // famiglie di portale, e nessuno pensa alla ricerca in quei termini.
-  const quanti_ = fonti.error ? '' : `<span class="n">${fonti.counts.total} bacheche</span>`;
-
   $('list').innerHTML = `
-    <section class="group">
-      <div class="group-head"><h2>In casa</h2></div>
+    <section class="block">
+      <div class="block-head"><h2 class="tag">In casa</h2></div>
       <p class="say">${esc(dentro)}</p>
     </section>
-    <details class="group">
+    <details class="block">
       <summary>
-        <div class="group-head"><h2>Dove cerca</h2>${quanti_}
-          <span class="link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>
+        <div class="block-head"><h2 class="tag">Dove cerca</h2>
+          ${fonti.error ? '' : `<span class="n">${fonti.counts.total} bacheche</span>`}
+          <span class="more-link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>
         </div>
       </summary>
       ${elenco}
@@ -1464,8 +1402,8 @@ function drawBlank() {
 }
 
 function drawSkeleton() {
-  $('list').innerHTML = `<section class="group">${
-    '<div class="skel"><i></i><div><i></i><i></i></div></div>'.repeat(4)
+  $('list').innerHTML = `<section class="block">${
+    '<div class="skel"><div><i></i><i></i></div><i></i></div>'.repeat(4)
   }</section>`;
 }
 
@@ -1477,15 +1415,14 @@ async function drawSetup() {
   const box = $('setup');
   if (!body || body.ready) { box.innerHTML = ''; return; }
   box.innerHTML = `
-    <section class="panel">
-      <span class="kicker">Prima di iniziare</span>
+    <section class="card">
+      <span class="tag">Prima di iniziare</span>
       <h3>Mancano dei file</h3>
       <p>Caronte non può partire finché non ci sono. Dal terminale, nella cartella del progetto:</p>
       <dl class="facts">
-        ${body.missing.map((m) => `<div class="fact"><dt>${esc(m.path)}</dt>
+        ${body.missing.map((m) => `<div class="pair"><dt class="tag">${esc(m.path)}</dt>
           <dd>${esc(m.what)}<br><code>${esc(m.how)}</code></dd></div>`).join('')}
       </dl>
-      <p>Poi ricarica la pagina.</p>
     </section>`;
 }
 
