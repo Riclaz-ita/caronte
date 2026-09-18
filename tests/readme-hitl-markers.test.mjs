@@ -39,15 +39,17 @@ for (const file of readmes) {
     continue;
   }
   const line = content.split('\n').find((l) => l.includes(MARKER)) ?? '';
-  // Inside the row means inside a table line: starts with a pipe and carries
-  // row content around the comment. A marker on its own line renders as a
-  // table-splitting paragraph, silently breaking the layout in 17 languages.
-  // The row label itself is translated ("Humain dans la Boucle", "人机协同"),
-  // so the marker text is the row's identity — do not grep for English here.
-  if (!line.trimStart().startsWith('|') || (line.match(/\|/g) || []).length < 2) {
-    fail(`${file}: HITL marker sits outside a table row (own line splits the table)`);
+  // L'invariante è che il marcatore NON stia su una riga sua: da solo diventa
+  // un paragrafo che spezza quello che sta ancorando. A monte la garanzia era
+  // una riga di tabella e il controllo cercava la barra verticale; qui è una
+  // voce d'elenco, quindi si chiede la cosa vera — che sulla riga ci sia anche
+  // il testo della garanzia, in qualunque forma sia scritta.
+  const senzaMarcatore = line.replace(/<!--[^]*?-->/g, '').trim();
+  const dentroUnaRiga = /^[|*-]/.test(senzaMarcatore) && senzaMarcatore.replace(/^[|*-]\s*/, '').length > 20;
+  if (!dentroUnaRiga) {
+    fail(`${file}: HITL marker sits on its own line (it splits what it anchors)`);
   } else {
-    pass(`${file}: marker present, inside its table row`);
+    pass(`${file}: marker present, inside the line it anchors`);
   }
 
   // The marker is an anchor, and until now nothing read what it anchors: a
@@ -79,12 +81,15 @@ for (const file of readmes) {
     const prose = mEnd === -1 ? null : line.slice(0, mStart) + line.slice(mEnd + '-->'.length);
     if (prose === null) {
       fail(`${file}: the HITL marker comment is never closed with -->`);
-    } else if (/never submits an application/i.test(prose)) {
+    // Il README di questa copia è in italiano: la frase da tenere ferma è la
+    // sua, non quella inglese di monte. La regola non cambia — il divieto va
+    // detto in termini assoluti, senza attenuazioni.
+    } else if (/non invia (mai )?(candidature|niente|nulla)/i.test(prose)) {
       pass(`${file}: the row states the prohibition in absolute terms`);
     } else {
-      fail(`${file}: the HITL row no longer says "never submits an application"`);
+      fail(`${file}: the HITL row no longer says "non invia candidature"`);
     }
-    const HEDGES = /\b(usually|generally|normally|typically|by default|unless|without your permission|automatically|by itself)\b/i;
+    const HEDGES = /\b(di solito|generalmente|normalmente|tipicamente|di default|in genere|a meno che|senza il tuo permesso|automaticamente|da solo|da s[eé])\b/i;
     const hedge = prose === null ? null : prose.match(HEDGES);
     if (prose === null) {
       // Already reported above; do not also claim the row is hedge-free, which

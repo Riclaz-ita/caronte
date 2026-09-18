@@ -6,7 +6,7 @@
 <title>Caronte</title>
 <style>
 /* ==========================================================================
-   Caronte — banco di verifica
+   Caronte
 
    Il modello non è un cruscotto, è una redazione. Caronte fa esattamente
    quello che fa un banco di fact-checking: prende una cosa da giudicare
@@ -731,50 +731,6 @@ function drawTrack() {
   }));
 }
 
-/**
- * Una frase che dice cosa succede in questa fase.
- *
- * Costo, file toccati e rischio non stanno qui: stanno nella conferma, che è
- * dove servono davvero. Ripeterli in ogni schermata li rendeva rumore.
- */
-const SPIEGA = {
-  search: () => {
-    const n = quanti === null ? 5 : quanti;
-    if (n === 0) return 'Con zero non importa niente. Scrivi quanti annunci vuoi cercare.';
-    const etichette = focusLabels();
-    const fra = etichette.length ? `, fra quelli che parlano di ${etichette.join(', ')}` : '';
-    const dove = cercaWeb ? 'sui portali e sul web' : 'sui portali';
-    return `Cerca ${n === 1 ? 'un annuncio' : `${n} annunci`}${fra}, ${dove}.`;
-  },
-  // Da qui in poi il bottone in alto lavora su tutta la fase. Il singolo
-  // annuncio ha il suo, sulla sua riga, e la frase lo ricorda una volta sola
-  // per fase invece di ripeterlo su ogni riga.
-  triage: (s) => {
-    const pronti = quanti_in(s, 'triage');
-    const n = quanti === null ? pronti : Math.min(quanti, pronti);
-    if (pronti === 0) return 'Niente da valutare. Gli annunci arrivano qui dalla ricerca.';
-    if (n === 0) return 'Con zero non valuta niente. Scrivi quanti annunci vuoi valutare.';
-    if (n === 1) return 'Dà un voto a un annuncio e scrive la sua riga di CV. Valutato, passa ad Analizza.';
-    return `Dà un voto a ${n} annunci e scrive la riga di CV per ognuno. Valutati, passano ad Analizza.`;
-  },
-  deep: (s) => {
-    const pronti = quanti_in(s, 'deep');
-    const n = quanti === null ? pronti : Math.min(quanti, pronti);
-    if (pronti === 0) return 'Niente da leggere. Un annuncio arriva qui quando lo valuti.';
-    if (n === 0) return 'Con zero non legge niente. Scrivi quanti annunci vuoi far leggere.';
-    if (n === 1) return 'Legge un annuncio per intero: cosa chiede davvero, quanto ci sei vicino, cosa può dire la lettera.';
-    return `Legge ${n} annunci per intero: cosa chiedono davvero, quanto ci sei vicino, cosa può dire la lettera.`;
-  },
-  packs: (s) => {
-    const pronti = quanti_in(s, 'packs');
-    if (pronti === 0) return 'Niente da preparare. Un annuncio arriva qui quando lo analizzi.';
-    return `Prepara CV e lettera per ${pronti === 1 ? 'un annuncio' : `${pronti} annunci`}. Pronti i documenti, si passa a Compila.`;
-  },
-  form: (s) => (quanti_in(s, 'form') === 0
-    ? 'Niente da compilare. Un annuncio arriva qui quando prepari i suoi documenti.'
-    : 'Apre il modulo già compilato in una finestra del browser, e si ferma lì.'),
-};
-
 // I filtri pronti. Ogni voce elenca i modi in cui un annuncio può soddisfarla,
 // separati da `|`: gli annunci sono per lo più in inglese ma non tutti, e
 // "part time" e "tempo parziale" sono la stessa richiesta scritta in due
@@ -803,9 +759,12 @@ const FILTRI = [
   ] },
 ];
 
-// Quanti annunci trattare al prossimo giro. null vuol dire "tutti quelli
-// pronti": è il valore di partenza, non una scelta fatta.
-let quanti = null;
+// Quanti annunci trattare, una fase per volta. Era una variabile sola per
+// tutte, e faceva due danni: il numero scritto in Cerca compariva in Valuta
+// come se fosse una risposta alla sua domanda, e se superava il tetto di quella
+// fase le frecce del campo non scendevano di uno ma agganciavano il tetto — il
+// salto che sembrava casuale. Ogni fase parte da zero: il numero lo scrivi lì.
+const quanti = { search: 0, triage: 0, deep: 0 };
 
 // La ricerca web è accesa di serie: è la fonte degli annunci che le bacheche
 // configurate non pubblicano. Si può spegnere, e la scelta resta. I portali di
@@ -839,29 +798,30 @@ function composeFocus() {
   return [...gruppi, ...libere].join(', ');
 }
 
-// Come si dice a voce: le etichette dei filtri, non le loro alternative.
-function focusLabels() {
-  const dai = FILTRI.flatMap((f) => f.voci.filter((v) => scelti.has(v.id)).map((v) => v.label.toLowerCase()));
-  return [...dai, ...focus.split(',').map((t) => t.trim()).filter(Boolean)];
-}
-
 function drawAct() {
   const id = selected || state.next || 'search';
   const phase = state.phases.find((p) => p.id === id);
   const stage = STAGES.find((p) => p.id === id);
   const s = state.stats;
 
-  const disponibili = id === 'triage' ? s.readyToTriage : s.toAnalyse;
   // Su Cerca il campo non ha tetto: quanti annunci esistano là fuori non si sa
   // prima di cercarli. Sulle altre due il tetto è quello che c'è in coda.
-  const qty = id === 'search'
+  const tetto = id === 'search' ? null : quanti_in(s, id);
+  // Il valore disegnato sta SEMPRE dentro [0, tetto]. Fuori da lì le frecce del
+  // campo non salgono di uno: agganciano il limite più vicino, ed è il salto
+  // che sembrava casuale.
+  const n = tetto === null ? Math.max(0, quanti[id]) : Math.max(0, Math.min(quanti[id], tetto));
+  const chiedeQuanti = id === 'search' || ((id === 'triage' || id === 'deep') && tetto > 0);
+  const qty = chiedeQuanti
     ? `<span class="qty"><label class="tag" for="lim">Quanti</label>
-       <input id="lim" type="number" min="1" value="${quanti === null ? 5 : quanti}"></span>`
-    : (id === 'triage' || id === 'deep') && disponibili > 0
-    ? `<span class="qty"><label class="tag" for="lim">Quanti</label>
-       <input id="lim" type="number" min="1" max="${Math.max(1, disponibili)}"
-              value="${quanti === null ? Math.max(1, disponibili) : quanti}"></span>`
+       <input id="lim" type="number" min="0" ${tetto === null ? '' : `max="${tetto}"`}
+              value="${n}"></span>`
     : '';
+  // Un bottone che non farebbe partire niente è peggio di un bottone assente:
+  // promette. Si spegne in due casi — hai chiesto zero, oppure la fase è vuota
+  // e non ha niente su cui lavorare. Cerca non è mai vuota: cercare si può
+  // sempre, è il resto che dipende da cosa ha trovato.
+  const fermo = id === 'search' ? n === 0 : tetto === 0 || (chiedeQuanti && n === 0);
 
   const foc = id === 'search'
     ? `<div class="filtri">
@@ -888,14 +848,20 @@ function drawAct() {
   $('act').innerHTML = `
     <span class="tag">Fase 0${STAGES.findIndex((x) => x.id === id) + 1} di 5</span>
     <h2>${esc(stage ? stage.name : id)}</h2>
-    <p id="act-say">${esc(SPIEGA[id](s))}</p>
     <div class="open-bar">
       ${qty}
-      <button class="primary" data-run="${esc(id)}">${esc(phase ? phase.label : id)}</button>
+      <button class="primary" data-run="${esc(id)}" data-fermo="${fermo}">${esc(phase ? phase.label : id)}</button>
       ${foc}
     </div>`;
 
-  const say = () => { $('act-say').textContent = SPIEGA[id](s); };
+  // Il bottone si spegne e si riaccende col numero, senza ridisegnare il campo:
+  // ridisegnarlo mentre ci scrivi dentro è il modo più rapido per fargli
+  // perdere il cursore a metà di un numero a due cifre.
+  const bottoni = () => document.querySelectorAll('[data-run]');
+  const aggiornaBottoni = (zero) => bottoni().forEach((b) => {
+    b.dataset.fermo = String(zero);
+    b.disabled = busy || zero;
+  });
 
   const qEl = $('lim');
   if (qEl) {
@@ -904,16 +870,16 @@ function drawAct() {
     qEl.addEventListener('focus', () => qEl.select());
     qEl.addEventListener('mouseup', (e) => e.preventDefault());
     qEl.addEventListener('input', () => {
-      quanti = qEl.value === '' ? null : Math.max(0, Number(qEl.value) || 0);
-      say();
+      quanti[id] = qEl.value === '' ? 0 : Math.max(0, Number(qEl.value) || 0);
+      aggiornaBottoni(quanti[id] === 0);
     });
-    qEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') askConfirm(id); });
+    qEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && quanti[id] > 0) askConfirm(id); });
   }
 
   const fEl = $('foc');
   if (fEl) {
-    fEl.addEventListener('input', () => { focus = fEl.value; ricorda(); say(); });
-    fEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') askConfirm('search'); });
+    fEl.addEventListener('input', () => { focus = fEl.value; ricorda(); });
+    fEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && quanti.search > 0) askConfirm('search'); });
   }
 
   const wEl = document.querySelector('[data-web]');
@@ -921,7 +887,6 @@ function drawAct() {
     cercaWeb = !cercaWeb;
     wEl.setAttribute('aria-pressed', String(cercaWeb));
     ricorda();
-    say();
   });
 
   document.querySelectorAll('[data-chip]').forEach((b) => {
@@ -930,7 +895,6 @@ function drawAct() {
       if (scelti.has(key)) scelti.delete(key); else scelti.add(key);
       ricorda();
       b.setAttribute('aria-pressed', String(scelti.has(key)));
-      say();
     });
   });
 
@@ -938,7 +902,7 @@ function drawAct() {
   // scorrendo un elenco lungo il bottone resta a portata.
   $('where').innerHTML = `<b>${esc(stage ? stage.name : id)}</b>
     <span class="sep">/</span> ${esc(stage ? stage.count(s) : '')}`;
-  $('crumb-act').innerHTML = `<button class="primary" data-run="${esc(id)}">${esc(phase ? phase.label : id)}</button>`;
+  $('crumb-act').innerHTML = `<button class="primary" data-run="${esc(id)}" data-fermo="${fermo}">${esc(phase ? phase.label : id)}</button>`;
   // Il bottone in alto serve quando quello vero è scivolato fuori schermo.
   // Finché si vedono tutti e due è solo un doppione, quindi compare scorrendo.
   const vero = $('act').querySelector('.open-bar');
@@ -952,8 +916,8 @@ function drawAct() {
   }
 
   $('restore').hidden = !state.canRestore;
-  document.querySelectorAll('[data-run]').forEach((b) => {
-    b.disabled = busy;
+  bottoni().forEach((b) => {
+    b.disabled = busy || b.dataset.fermo === 'true';
     b.addEventListener('click', () => askConfirm(b.dataset.run));
   });
 }
