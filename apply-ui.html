@@ -460,12 +460,6 @@ summary:hover .more-link { color: var(--ink); }
 .state[data-k="submitted"]::before { background: currentColor; border-radius: 50%; }
 .state[data-k="dead"]::before { background: repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 4px); }
 
-/* Le fonti della ricerca: stesso elenco, apparato al posto della prosa. */
-.fonte { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 1rem; align-items: baseline; padding: 0.5625rem 0.125rem; border-bottom: 1px solid var(--rule); }
-.fonte b { font: 500 var(--t-sm)/1.4 var(--sans); }
-.fonte .esempi { display: block; margin-top: 0.1875rem; }
-.fonte .n { font: 400 var(--t-xs)/1.7 var(--mono); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-
 .say { margin: 0.875rem 0 0; font-size: var(--t-sm); color: var(--ink-soft); max-width: 64ch; }
 
 /* ==========================================================================
@@ -648,13 +642,22 @@ let crumbWatch = null;   // tiene d'occhio se il bottone vero è ancora a scherm
 // che a guardare, ed era il contrario del punto di una rotaia.
 // Ogni fase ha la sua tinta, dichiarata nel foglio di stile. Qui gira solo il
 // nome della variabile: i colori stanno in un posto solo.
+// Il numero è quante righe stanno in quella fase, non una statistica vicina:
+// rotaia ed elenco leggono lo stesso conteggio, quindi non possono
+// contraddirsi. A decidere la fase di un annuncio è il server, in `phaseOf`.
 const STAGES = [
-  { id: 'search', name: 'Cerca',     count: (s) => `${s.inPlay} in gioco` },
-  { id: 'triage', name: 'Valuta',    count: (s) => `${s.readyToTriage} da valutare` },
-  { id: 'deep',   name: 'Analizza',  count: (s) => `${s.toAnalyse} da leggere` },
-  { id: 'packs',  name: 'Documenti', count: (s) => `${s.packsBuilt} pronti` },
-  { id: 'form',   name: 'Compila',   count: (s) => `${s.submitted} inviate` },
+  { id: 'search', name: 'Cerca',     count: (s) => `${s.inPlay} in coda` },
+  { id: 'triage', name: 'Valuta',    count: (s) => `${quanti_in(s, 'triage')} da valutare` },
+  { id: 'deep',   name: 'Analizza',  count: (s) => `${quanti_in(s, 'deep')} da leggere` },
+  { id: 'packs',  name: 'Documenti', count: (s) => `${quanti_in(s, 'packs')} da preparare` },
+  { id: 'form',   name: 'Compila',   count: (s) => `${quanti_in(s, 'form')} da inviare` },
 ];
+
+const quanti_in = (s, id) => (s.byPhase ? s.byPhase[id] : 0);
+
+// Chi è ancora in cammino. Scartati, chiusi e inviati restano nella schermata
+// dove sono arrivati, ma nell'archivio in fondo e fuori dai conti.
+const inCammino = (r) => r.apply !== 'skipped' && r.apply !== 'dead' && r.apply !== 'submitted';
 
 // Il livello di rischio va detto a parole: "medium" non significa niente per
 // chi legge, e il colore non può portarlo da solo.
@@ -724,7 +727,7 @@ function drawTrack() {
     $('confirm').innerHTML = '';
     drawTrack();
     drawAct();
-    // L'elenco cambia con la fase: su Cerca mostra le fonti, altrove i ruoli.
+    // L'elenco cambia con la fase: ogni fase mostra solo i suoi annunci.
     drawList();
   }));
 }
@@ -741,23 +744,36 @@ const SPIEGA = {
     if (n === 0) return 'Con zero non importa niente. Scrivi quanti annunci vuoi cercare.';
     const etichette = focusLabels();
     const fra = etichette.length ? `, fra quelli che parlano di ${etichette.join(', ')}` : '';
-    return `Cerca ${n === 1 ? 'un annuncio' : `${n} annunci`}${fra}, uno per portale a turno.`;
+    const dove = cercaWeb ? 'sui portali e sul web' : 'sui portali';
+    return `Cerca ${n === 1 ? 'un annuncio' : `${n} annunci`}${fra}, ${dove}.`;
   },
+  // Da qui in poi il bottone in alto lavora su tutta la fase. Il singolo
+  // annuncio ha il suo, sulla sua riga, e la frase lo ricorda una volta sola
+  // per fase invece di ripeterlo su ogni riga.
   triage: (s) => {
-    const n = quanti === null ? s.readyToTriage : quanti;
+    const pronti = quanti_in(s, 'triage');
+    const n = quanti === null ? pronti : Math.min(quanti, pronti);
+    if (pronti === 0) return 'Niente da valutare. Gli annunci arrivano qui dalla ricerca.';
     if (n === 0) return 'Con zero non valuta niente. Scrivi quanti annunci vuoi valutare.';
-    if (n === 1) return 'Dà un voto al primo annuncio della lista e scrive la sua riga di CV.';
-    return `Dà un voto a ${n} annunci e scrive la riga di CV per ognuno.`;
+    if (n === 1) return 'Dà un voto a un annuncio e scrive la sua riga di CV. Valutato, passa ad Analizza.';
+    return `Dà un voto a ${n} annunci e scrive la riga di CV per ognuno. Valutati, passano ad Analizza.`;
   },
   deep: (s) => {
-    const n = quanti === null ? s.toAnalyse : Math.min(quanti, s.toAnalyse);
-    if (s.toAnalyse === 0) return 'Nessun annuncio da leggere a fondo. Ci passano quelli con voto 3 o più.';
+    const pronti = quanti_in(s, 'deep');
+    const n = quanti === null ? pronti : Math.min(quanti, pronti);
+    if (pronti === 0) return 'Niente da leggere. Un annuncio arriva qui quando lo valuti.';
     if (n === 0) return 'Con zero non legge niente. Scrivi quanti annunci vuoi far leggere.';
     if (n === 1) return 'Legge un annuncio per intero: cosa chiede davvero, quanto ci sei vicino, cosa può dire la lettera.';
     return `Legge ${n} annunci per intero: cosa chiedono davvero, quanto ci sei vicino, cosa può dire la lettera.`;
   },
-  packs: (s) => `Prepara CV e lettera per ${s.packsTodo} annunci.`,
-  form: () => 'Apre il modulo già compilato in una finestra del browser, e si ferma lì.',
+  packs: (s) => {
+    const pronti = quanti_in(s, 'packs');
+    if (pronti === 0) return 'Niente da preparare. Un annuncio arriva qui quando lo analizzi.';
+    return `Prepara CV e lettera per ${pronti === 1 ? 'un annuncio' : `${pronti} annunci`}. Pronti i documenti, si passa a Compila.`;
+  },
+  form: (s) => (quanti_in(s, 'form') === 0
+    ? 'Niente da compilare. Un annuncio arriva qui quando prepari i suoi documenti.'
+    : 'Apre il modulo già compilato in una finestra del browser, e si ferma lì.'),
 };
 
 // I filtri pronti. Ogni voce elenca i modi in cui un annuncio può soddisfarla,
@@ -792,8 +808,11 @@ const FILTRI = [
 // pronti": è il valore di partenza, non una scelta fatta.
 let quanti = null;
 
-// La ricerca web costa token, quindi si accende a mano a ogni giro.
-let cercaWeb = false;
+// La ricerca web è accesa di serie: è la fonte degli annunci che le bacheche
+// configurate non pubblicano. Si può spegnere, e la scelta resta. I portali di
+// portals.yml invece vengono interrogati sempre: non sono un'opzione.
+let cercaWeb = true;
+try { cercaWeb = localStorage.getItem('career-ops-web') !== 'no'; } catch { cercaWeb = true; }
 
 // Quali filtri sono spuntati. Sopravvive alla chiusura del browser: una
 // ricerca impostata bene non si reimposta ogni volta.
@@ -807,6 +826,7 @@ function ricorda() {
   try {
     localStorage.setItem('career-ops-filtri', JSON.stringify([...scelti]));
     localStorage.setItem('career-ops-focus', focus);
+    localStorage.setItem('career-ops-web', cercaWeb ? 'sì' : 'no');
   } catch { /* sessione privata: pazienza */ }
 }
 
@@ -859,8 +879,8 @@ function drawAct() {
                    placeholder="marketing, social — separale con la virgola"
                    autocomplete="off" spellcheck="false"></span>
         </div>
-        <div class="frow" role="group" aria-label="Ricerca web">
-          <span class="tag">Web</span>
+        <div class="frow" role="group" aria-label="Fonti">
+          <span class="tag">Fonti</span>
           <button class="chip" data-web aria-pressed="${cercaWeb}">Cerca anche sul web</button>
         </div>
       </div>`
@@ -901,6 +921,8 @@ function drawAct() {
   if (wEl) wEl.addEventListener('click', () => {
     cercaWeb = !cercaWeb;
     wEl.setAttribute('aria-pressed', String(cercaWeb));
+    ricorda();
+    say();
   });
 
   document.querySelectorAll('[data-chip]').forEach((b) => {
@@ -1027,12 +1049,19 @@ function limitValue() {
 }
 
 async function askConfirm(phaseId, slug) {
-  const limit = phaseId === 'search' || phaseId === 'triage' || phaseId === 'deep' ? limitValue() : undefined;
+  // Con uno slug il numero non c'entra: hai puntato il dito su una riga.
+  const limit = !slug && (phaseId === 'search' || phaseId === 'triage' || phaseId === 'deep') ? limitValue() : undefined;
   const foc = phaseId === 'search' ? composeFocus() : undefined;
   const web = phaseId === 'search' && cercaWeb;
   const { body } = await api('/api/preflight', { phase: phaseId, limit, focus: foc, web });
   pending = { phase: phaseId, limit, focus: foc, slug, web };
-  if (slug) body.affects = `solo ${slug}`;
+  if (slug) {
+    const r = state.rows.find((x) => x.slug === slug);
+    body.affects = r ? `un annuncio solo: ${r.role || r.slug}${r.company ? ` — ${r.company}` : ''}` : `solo ${slug}`;
+    // Il costo di serie parla del gruppo intero: su una riga sola sarebbe
+    // falso, e una conferma che gonfia il conto è una conferma che non credi.
+    if (phaseId === 'triage' || phaseId === 'deep') body.cost = 'token — una richiesta, per questo annuncio';
+  }
   drawConfirm(body);
 }
 
@@ -1169,50 +1198,68 @@ async function askRestore() {
 // Gli annunci
 // ---------------------------------------------------------------------------
 
-// L'ordine è quello dell'attenzione: prima ciò che aspetta te.
-const GROUPS = [
-  { key: 'decide',  title: 'Da decidere' },
-  { key: 'chosen',  title: 'Scelti' },
-  { key: 'waiting', title: 'Non valutati' },
-  { key: 'skipped', title: 'Ignorati' },
-];
-
-function bucket(r) {
-  if (r.apply === 'submitted' || r.apply === 'chosen' || r.apply === 'partial') return 'chosen';
-  if (r.apply === 'skipped' || r.apply === 'dead') return 'skipped';
-  if (r.score === '' || r.score === null) return 'waiting';
-  return 'decide';
-}
+// Cosa aspetta un annuncio, fase per fase, e da dove è arrivato. La seconda
+// riga è la sola spiegazione del percorso che serva: la vedi quando la fase è
+// vuota, cioè esattamente quando ti stai chiedendo perché.
+const ATTESA = {
+  triage: { titolo: 'Da valutare', vuoto: 'Nessun annuncio da valutare.', come: 'Ne arrivano cercandoli in 01 Cerca.' },
+  deep:   { titolo: 'Da leggere a fondo', vuoto: 'Niente da analizzare.', come: 'Un annuncio arriva qui quando lo valuti in 02 Valuta.' },
+  packs:  { titolo: 'Da preparare', vuoto: 'Nessun documento da preparare.', come: 'Un annuncio arriva qui quando lo analizzi in 03 Analizza.' },
+  form:   { titolo: 'Da inviare', vuoto: 'Nessun form da compilare.', come: 'Un annuncio arriva qui quando prepari i suoi documenti in 04 Documenti.' },
+};
 
 function drawList() {
-  // La schermata Cerca serve a cercare. Gli annunci con i loro bottoni sono
-  // decisioni, e una decisione si prende dopo aver letto un punteggio: vivono
-  // da Valuta in poi.
-  if ((selected || state.next || 'search') === 'search') return drawSearchList();
-
+  const id = selected || state.next || 'search';
+  // La schermata Cerca serve a cercare: gli annunci trovati aspettano un voto,
+  // e aspettarlo è la fase dopo.
+  if (id === 'search') return drawSearchList();
   if (!state.rows.length) return drawBlank();
 
-  const by = { decide: [], chosen: [], waiting: [], skipped: [] };
-  state.rows.forEach((r) => by[bucket(r)].push(r));
+  // Un annuncio compare in una fase sola: quella del lavoro che gli manca.
+  const qui = state.rows.filter((r) => r.phase === id);
+  const attivi = qui.filter(inCammino);
+  // In Valuta prima chi aspetta un voto. L'ordine generale è per voto più
+  // alto, e lì metteva in cima proprio gli annunci già bocciati, cioè gli
+  // unici che in quella schermata non hanno più niente da chiederti.
+  if (id === 'triage') attivi.sort((a, b) => (a.score === '' ? 0 : 1) - (b.score === '' ? 0 : 1));
+  const archivio = qui.filter((r) => !inCammino(r));
+  const att = ATTESA[id] || { titolo: '', vuoto: 'Niente qui.', come: '' };
 
-  $('list').innerHTML = GROUPS.filter((g) => by[g.key].length).map((g) => {
-    const head = `<div class="block-head"><h2 class="tag">${esc(g.title)}</h2><span class="n">${by[g.key].length}</span>${
-      g.key === 'skipped'
-        ? '<span class="more-link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>'
-        : ''
-    }</div>`;
-    const body = by[g.key].map(rowHtml).join('');
-    return g.key === 'skipped'
-      ? `<details class="block"><summary>${head}</summary>${body}</details>`
-      : `<section class="block">${head}${body}</section>`;
-  }).join('');
+  const blocco = attivi.length
+    ? `<section class="block">
+        <div class="block-head"><h2 class="tag">${esc(att.titolo)}</h2><span class="n">${attivi.length}</span></div>
+        ${attivi.map(rowHtml).join('')}
+      </section>`
+    : `<section class="block">
+        <div class="block-head"><h2 class="tag">${esc(att.titolo)}</h2></div>
+        <p class="say">${esc(att.vuoto)}${att.come ? ` ${esc(att.come)}` : ''}</p>
+      </section>`;
 
+  const fuori = archivio.length
+    ? `<details class="block">
+        <summary>
+          <div class="block-head"><h2 class="tag">Archivio</h2><span class="n">${archivio.length}</span>
+            <span class="more-link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>
+          </div>
+        </summary>
+        ${archivio.map(rowHtml).join('')}
+      </details>`
+    : '';
+
+  $('list').innerHTML = `${blocco}${fuori}`;
   wireRows();
 }
 
 function wireRows() {
   document.querySelectorAll('[data-decide]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true;
+    // "Ho inviato" vale solo su una riga già scelta: una che nessuno ha
+    // deciso non può essere stata mandata. Se i documenti sono pronti la
+    // scelta l'hai già fatta coi fatti, quindi la registro io.
+    const r = state.rows.find((x) => x.slug === b.dataset.slug);
+    if (b.dataset.decide === 'sent' && r && r.apply === 'queued') {
+      await api('/api/decide', { slug: r.slug, decision: 'apply' });
+    }
     const { body, status } = await api('/api/decide', { slug: b.dataset.slug, decision: b.dataset.decide });
     if (status !== 200) drawNote(body.error || 'La decisione non è stata registrata.');
     else if (body.tracker && body.tracker.error) drawNote(`Segnata come inviata, ma il tracker non è stato aggiornato: ${body.tracker.error}`);
@@ -1220,8 +1267,18 @@ function wireRows() {
     refresh();
   }));
 
-  // Apri il form su QUESTO annuncio, non sul primo che capita.
-  document.querySelectorAll('[data-form]').forEach((b) => b.addEventListener('click', () => {
+  // Il bottone della riga fa partire la fase su QUESTO annuncio soltanto.
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
+    askConfirm(b.dataset.go, b.dataset.slug);
+  }));
+
+  // Apri il form su QUESTO annuncio, non sul primo che capita. Arrivare qui è
+  // già la decisione: `apply-session` apre solo le righe scelte, quindi il
+  // click la registra invece di chiedere un secondo click che dica la stessa
+  // cosa.
+  document.querySelectorAll('[data-form]').forEach((b) => b.addEventListener('click', async () => {
+    const r = state.rows.find((x) => x.slug === b.dataset.form);
+    if (r && r.apply === 'queued') await api('/api/decide', { slug: r.slug, decision: 'apply' });
     askConfirm('form', b.dataset.form);
   }));
 
@@ -1231,35 +1288,51 @@ function wireRows() {
 }
 
 /**
- * I bottoni di decisione compaiono solo quando c'è un voto.
+ * Un annuncio, un bottone: quello del passo che gli manca.
  *
- * Prima comparivano su ogni riga: ventuno annunci senza voto significavano
- * ottantaquattro bottoni che chiedevano di decidere senza l'unica informazione
- * che serve per decidere. Quel lavoro è esattamente ciò che la fase Valuta
- * esiste per toglierti.
+ * Prima ogni riga portava tutte e quattro le decisioni, anche senza voto, e il
+ * pulsante che faceva davvero qualcosa stava in cima alla pagina e lavorava su
+ * tutto il mucchio. Adesso il lavoro si comanda dalla riga: valuti questo,
+ * analizzi quello, e l'annuncio passa da solo alla fase dopo. Il bottone
+ * grande in alto resta per farle tutte in una volta.
  */
 function azioni(r) {
-  const scored = r.score !== '' && r.score !== null;
+  const slug = esc(r.slug);
+  const ignora = `<button class="quiet" data-decide="skip" data-slug="${slug}">Ignora</button>`;
 
-  if (r.apply === 'skipped') return `<button data-decide="apply" data-slug="${esc(r.slug)}">Rimetti in gioco</button>`;
+  if (r.apply === 'skipped') return `<button data-decide="apply" data-slug="${slug}">Rimetti in gioco</button>`;
   // Inviata o chiusa: nessun bottone. Non si torna indietro con un click.
   if (r.apply === 'submitted' || r.apply === 'dead') return '';
-  if (!scored) return '';
 
   // Form aperto: l'unica domanda che resta è se l'hai mandata.
   if (r.apply === 'opened') {
     return `
-      <button class="primary" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>
-      <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}">Non inviata</button>`;
+      <button class="primary" data-decide="sent" data-slug="${slug}">Ho inviato</button>
+      <button class="quiet" data-decide="skip" data-slug="${slug}">Non inviata</button>`;
   }
-  const canOpen = r.apply === 'chosen' && (r.pack === 'built' || r.pack === 'jd_failed');
+
+  if (r.phase === 'triage') {
+    // Senza testo non c'è niente da far leggere a un modello: il bottone
+    // mancherebbe la sua promessa, quindi non c'è.
+    if (!r.jd) return ignora;
+    if (r.score === '' || r.score === null) {
+      return `<button class="primary" data-go="triage" data-slug="${slug}">Valuta</button>${ignora}`;
+    }
+    // Valutato sotto 3: l'analisi non lo prende da sola. Se lo vuoi leggere
+    // comunque, è una tua decisione e la puoi prendere da qui.
+    return `<button data-go="deep" data-slug="${slug}">Analizza comunque</button>${ignora}`;
+  }
+  if (r.phase === 'deep') {
+    return `<button class="primary" data-go="deep" data-slug="${slug}">Analizza</button>${ignora}`;
+  }
+  if (r.phase === 'packs') {
+    return `<button class="primary" data-go="packs" data-slug="${slug}">Prepara i documenti</button>${ignora}`;
+  }
 
   return `
-    <button class="primary" data-decide="apply" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'chosen'}">Candidati</button>
-    ${canOpen ? `<button data-form="${esc(r.slug)}">Apri il form</button>` : ''}
-    <button class="quiet" data-decide="partial" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'partial'}">Solo documenti</button>
-    <button class="quiet" data-decide="skip" data-slug="${esc(r.slug)}" aria-pressed="${r.apply === 'skipped'}">Ignora</button>
-    ${r.apply === 'chosen' || r.apply === 'partial' ? `<button class="quiet" data-decide="sent" data-slug="${esc(r.slug)}">Ho inviato</button>` : ''}`;
+    <button class="primary" data-form="${slug}">Apri il form</button>
+    <button class="quiet" data-decide="sent" data-slug="${slug}">Ho inviato</button>
+    ${ignora}`;
 }
 
 /**
@@ -1402,62 +1475,40 @@ async function apriDettagli(det) {
 }
 
 /**
- * La schermata Cerca: quanto c'è in casa, e dove va a guardare.
+ * La schermata Cerca: cosa c'è già in casa, e basta.
  *
- * L'elenco dei portali arriva da portals.yml, non è scritto qui: una lista a
- * mano mentirebbe il primo giorno che una bacheca viene disabilitata. Sta
- * chiuso, perché è configurazione e non il lavoro del giorno.
+ * Quante bacheche interroga e come si chiamano era configurazione esposta
+ * come se fosse una notizia: un conteggio che non cambia niente di quello che
+ * stai per fare. I portali si interrogano sempre, e l'unica cosa che resta da
+ * decidere — se cercare anche sul web — è un'opzione qui sopra, accesa.
  */
-let fonti = null;
-
 async function drawSearchList() {
   const s = state.stats;
 
-  if (!fonti) {
-    const { body, status } = await api('/api/sources');
-    fonti = status === 200 ? body : { error: body.error || 'portals.yml non si legge' };
-  }
-
   const dentro = s.total === 0
     ? 'In coda non c\'è ancora niente.'
-    : `In coda ci sono ${s.total} annunci, ${s.readyToTriage} ancora da valutare.`;
-
-  const elenco = fonti.error
-    ? `<p class="say">${esc(fonti.error)}</p>`
-    : fonti.portals.map((p) => `
-        <div class="fonte">
-          <span><b>${esc(p.id)}</b>${p.examples.length
-            ? `<span class="tag esempi">${esc(p.examples.join(' · '))}${p.entries > p.examples.length ? ' …' : ''}</span>` : ''}</span>
-          <span class="n">${p.entries === 1 ? '1 bacheca' : `${p.entries} bacheche`}</span>
-        </div>`).join('');
+    : `In coda ci sono ${s.total} annunci, ${quanti_in(s, 'triage')} ancora da valutare.`;
 
   $('list').innerHTML = `
     <section class="block">
       <div class="block-head"><h2 class="tag">In casa</h2></div>
       <p class="say">${esc(dentro)}</p>
-    </section>
-    <details class="block">
-      <summary>
-        <div class="block-head"><h2 class="tag">Dove cerca</h2>
-          ${fonti.error ? '' : `<span class="n">${fonti.counts.total} bacheche</span>`}
-          <span class="more-link"><span class="chiuso">mostra</span><span class="aperto">nascondi</span> <i class="caret" aria-hidden="true"></i></span>
-        </div>
-      </summary>
-      ${elenco}
-    </details>`;
+    </section>`;
 }
 
 function drawBlank() {
   $('list').innerHTML = `
     <div class="blank">
       <h2>Ancora niente in coda</h2>
-      <p>Cinque fasi in fila. Ognuna dice cosa farà prima di partire, e si può tornare indietro.</p>
+      <p>Cinque fasi in fila. Un annuncio sta in una sola, e passa alla
+      successiva quando gli fai fare il suo passo. Ogni fase dice cosa farà
+      prima di partire, e si può tornare indietro.</p>
       <ol>
         <li><b>Cerca</b> interroga i portali e scarica il testo degli annunci.</li>
-        <li><b>Valuta</b> dà un punteggio a ciascuno e scrive la riga da mettere in cima al CV.</li>
-        <li><b>Analizza</b> rilegge per intero quelli passati e dice cosa chiedono davvero.</li>
-        <li><b>Documenti</b> genera CV e lettera per quelli sopra soglia.</li>
-        <li><b>Compila</b> apre il form riempito.</li>
+        <li><b>Valuta</b> dà un voto all'annuncio e scrive la riga da mettere in cima al CV.</li>
+        <li><b>Analizza</b> lo rilegge per intero e dice cosa chiede davvero.</li>
+        <li><b>Documenti</b> genera CV e lettera su misura.</li>
+        <li><b>Compila</b> apre il form riempito. L'invio resta tuo.</li>
       </ol>
     </div>`;
 }

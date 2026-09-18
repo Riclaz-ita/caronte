@@ -183,7 +183,14 @@ export const PHASES = [
     risk: 'low',
     writes: ['data/apply-queue.tsv', 'output/apply/'],
     reversible: true,
-    steps: [{ label: 'genera i pacchetti', cmd: 'node', args: ['build-packs.mjs'] }],
+    // Con uno slug prepara solo quell'annuncio, e senza guardare la soglia di
+    // voto: sceglierlo a mano È la decisione che la soglia prende da sola
+    // quando li prepari tutti insieme.
+    steps: (opts) => [{
+      label: 'genera i pacchetti',
+      cmd: 'node',
+      args: opts.slug ? ['build-packs.mjs', '--slug', String(opts.slug)] : ['build-packs.mjs'],
+    }],
   },
   {
     id: 'form',
@@ -439,6 +446,35 @@ export function inboxCovers(limit, focus) {
 // ---------------------------------------------------------------------------
 
 /**
+ * In quale fase sta un annuncio, adesso.
+ *
+ * È il percorso: un annuncio compare in una fase sola, quella del lavoro che
+ * gli manca. Prima ogni schermata mostrava tutta la coda e le cinque fasi
+ * dicevano la stessa cosa cinque volte; ora Analizza è vuoto finché non hai
+ * valutato qualcosa, e quello che valuti ci arriva da solo.
+ *
+ * L'ordine dei controlli è l'ordine del percorso letto al contrario, perché
+ * vince sempre il lavoro già fatto: i documenti pronti battono l'analisi,
+ * l'analisi batte il voto. Un annuncio valutato sotto 3 resta in Valuta con il
+ * suo voto: l'analisi non lo prende (`pendingAnalysis` parte da 3) e mandarlo
+ * avanti lo farebbe sparire in una fase che non lo lavorerà mai.
+ *
+ * Scartati, chiusi e inviati non sono una fase: restano dove sono ma fuori dal
+ * conteggio, nell'archivio in fondo alla loro schermata.
+ */
+export function phaseOf(row, hasAnalysis = () => false) {
+  if (row.pack === 'built' || row.apply === 'opened' || row.apply === 'submitted') return 'form';
+  if (hasAnalysis(row.slug)) return 'packs';
+  if (row.score === '' || row.score === null) return 'triage';
+  return Number(row.score) >= 3 ? 'deep' : 'triage';
+}
+
+/** Chi è ancora in cammino: non scartato, non chiuso, non già inviato. */
+export function inFlow(row) {
+  return row.apply !== 'skipped' && row.apply !== 'dead' && row.apply !== 'submitted';
+}
+
+/**
  * Everything the "Stato progetto" panel shows, derived from the queue alone.
  *
  * `readyToTriage` counts only rows whose JD actually landed: a row without a
@@ -463,8 +499,12 @@ export function summarise(rows, hasJd = () => true, hasAnalysis = () => false) {
     partial: 0,
     skipped: 0,
     submitted: 0,
+    // Quanti annunci stanno in ciascuna fase: è il numero che la rotaia
+    // mostra, ed è lo stesso che conta le righe dell'elenco.
+    byPhase: { search: 0, triage: 0, deep: 0, packs: 0, form: 0 },
   };
   for (const r of rows) {
+    if (inFlow(r)) s.byPhase[phaseOf(r, hasAnalysis)] += 1;
     const jd = hasJd(r.slug);
     if (jd) s.withJd += 1;
     if (jd && pendingTriage(r)) s.readyToTriage += 1;
@@ -560,9 +600,14 @@ export function preflight(phaseId, stats, opts = {}) {
     else if (n === 0) warning = 'Hai chiesto zero annunci: non verrà letto niente.';
     else warning = 'Una richiesta per annuncio. Il conto cresce con la quantità, non è un giro solo.';
   } else if (phaseId === 'packs') {
-    const n = stats.packsTodo;
-    affects = `${n} annunci sopra la soglia di punteggio (${PACK_THRESHOLD})`;
+    // Il pannello conta chi è arrivato in fase Documenti, cioè chi è stato
+    // analizzato. `packsTodo` conta chi sta sopra la soglia di build-packs, che
+    // è un numero diverso e più piccolo: dirlo qui farebbe promettere alla
+    // conferma meno di quello che la schermata mostra.
+    const n = stats.byPhase ? stats.byPhase.packs : stats.packsTodo;
+    affects = `${n} annunci analizzati, ${stats.packsTodo} dei quali sopra la soglia di punteggio (${PACK_THRESHOLD})`;
     if (n <= 0) warning = 'Nessun annuncio in attesa di documenti.';
+    else if (stats.packsTodo <= 0) warning = `Nessuno arriva a ${PACK_THRESHOLD}: preparali uno per uno dal bottone sulla riga, che la soglia non la guarda.`;
   } else {
     affects = `${stats.formReady} annunci pronti per il form`;
     if (stats.formReady === 0) warning = 'Nessun annuncio in coda: segna prima qualche ruolo come "Candidati".';
@@ -749,12 +794,16 @@ function exec(run, { label, cmd, args, cwd = __dirname, input = null }) {
 }
 
 /** Ask Claude Code to triage a batch of postings, then write the verdicts into the queue. */
-async function runTriage(run, limit) {
+async function runTriage(run, limit, slug) {
   const { buildBatchPrompt, parseVerdicts, ingestVerdicts } = await import('./triage.mjs');
   const rows = readQueue(QUEUE);
-  const batch = triageBatch(rows, Math.min(limit ?? BATCH_MAX, BATCH_MAX), (slug) => Boolean(loadJd(slug)));
+  // Uno slug è un dito puntato su una riga: vale più di qualunque numero.
+  const batch = slug
+    ? rows.filter((r) => r.slug === slug && pendingTriage(r) && loadJd(r.slug))
+    : triageBatch(rows, Math.min(limit ?? BATCH_MAX, BATCH_MAX), (s) => Boolean(loadJd(s)));
   if (!batch.length) {
-    log(run, limit === 0 ? 'Quantità richiesta: zero. Non valuto niente.' : 'Nessun annuncio da valutare.');
+    log(run, slug ? `${slug} non è da valutare: o ha già un voto, o non ha testo.`
+      : limit === 0 ? 'Quantità richiesta: zero. Non valuto niente.' : 'Nessun annuncio da valutare.');
     return;
   }
 
@@ -793,13 +842,17 @@ async function runTriage(run, limit) {
  * failure on one posting is logged and the rest continue — twelve good
  * analyses and one error beats nothing at all.
  */
-async function runDeep(run, limit) {
+async function runDeep(run, limit, slug) {
   const rows = readQueue(QUEUE);
-  const batch = pendingAnalysis(rows, (slug) => loadAnalysis(slug) !== null)
-    .filter((r) => loadJd(r.slug));
-  const take = limit === undefined ? batch : batch.slice(0, Math.max(0, Math.min(limit, batch.length)));
+  // Scelto a mano si legge comunque, anche col voto sotto 3: la soglia serve a
+  // decidere per te quando non stai decidendo tu.
+  const batch = slug
+    ? rows.filter((r) => r.slug === slug && loadJd(r.slug))
+    : pendingAnalysis(rows, (s) => loadAnalysis(s) !== null).filter((r) => loadJd(r.slug));
+  const take = slug || limit === undefined ? batch : batch.slice(0, Math.max(0, Math.min(limit, batch.length)));
   if (!take.length) {
-    log(run, limit === 0 ? 'Quantità richiesta: zero. Non leggo niente.' : 'Nessun annuncio da analizzare.');
+    log(run, slug ? `${slug} non si può leggere: manca il testo dell'annuncio.`
+      : limit === 0 ? 'Quantità richiesta: zero. Non leggo niente.' : 'Nessun annuncio da analizzare.');
     return;
   }
 
@@ -866,9 +919,9 @@ async function runPhase(run, phase, opts) {
   try {
     snapshot();
     if (phase.steps === 'triage') {
-      await runTriage(run, opts.limit);
+      await runTriage(run, opts.limit, opts.slug);
     } else if (phase.steps === 'deep') {
-      await runDeep(run, opts.limit);
+      await runDeep(run, opts.limit, opts.slug);
     } else if (phase.steps === 'form') {
       await runForm(run, opts.slug);
     } else {
@@ -1032,7 +1085,8 @@ export function teaserFromJd(text, max = 180) {
 
 function currentState() {
   const rows = readQueue(QUEUE);
-  const stats = summarise(rows, jdExists, (slug) => existsSync(analysisPath(slug)));
+  const analysed = (slug) => existsSync(analysisPath(slug));
+  const stats = summarise(rows, jdExists, analysed);
   return {
     stats,
     inbox: inboxEntries().length,
@@ -1046,6 +1100,9 @@ function currentState() {
         archetype: r.archetype, level: r.level, score: r.score, summary_line: r.summary_line,
         pack: r.pack, apply: r.apply, jd: jdExists(r.slug), fit: fitOf(r.slug),
         teaser: teaserFromJd(loadJd(r.slug)),
+        // La fase la decide il server: così la rotaia, i suoi numeri e
+        // l'elenco non possono raccontare tre storie diverse.
+        phase: phaseOf(r, analysed),
       }))
       .sort((a, b) => (b.score === '' ? -1 : Number(b.score)) - (a.score === '' ? -1 : Number(a.score))),
   };

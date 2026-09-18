@@ -15,7 +15,7 @@ import {
   preflight, shapeError, snapshotPath, snapshot, restore,
   parseFocus, describeFocus, matchesFocus, inboxCovers, loadSources,
   PACK_THRESHOLD, packsPending, pickForForm, triageBatch, PHASE_MODEL,
-  MODEL_CWD, claudeArgs, teaserFromJd,
+  MODEL_CWD, claudeArgs, teaserFromJd, phaseOf, inFlow,
 } from '../apply-ui.mjs';
 import { APPLY_STATES } from '../apply-queue.mjs';
 import { parseBrief } from '../candidate-brief.mjs';
@@ -511,3 +511,57 @@ const fuori = base === null ? '' : PAGE_CSS.replace(base, '');
 ok('fuori dal layer non resta nessuna regola sul solo elemento button',
   base !== null && !/(^|\n)[ \t]*button(\.[\w-]+)?(:[\w-]+(\([^)]*\))?)*[ \t]*[,{]/.test(fuori));
 ok('nessun bottone deve più ricordarsi di marcarsi a mano', !/\bclass="[^"]*\bbare\b/.test(PAGE_CSS));
+
+// ---------------------------------------------------------------------------
+// Il percorso: un annuncio sta in una fase sola e avanza facendogli fare il
+// suo passo. È la regola che tiene separate le cinque schermate, quindi è la
+// regola che va tenuta ferma: prima mostravano tutte la stessa coda.
+// ---------------------------------------------------------------------------
+
+const daValutare = { slug: 'a', score: '', pack: 'pending', apply: 'queued' };
+const passato    = { slug: 'b', score: '4', pack: 'pending', apply: 'queued' };
+const bocciato   = { slug: 'c', score: '2', pack: 'pending', apply: 'queued' };
+const letto      = { slug: 'd', score: '4', pack: 'pending', apply: 'queued' };
+const conPacco   = { slug: 'e', score: '4', pack: 'built', apply: 'queued' };
+const haLAnalisi = (slug) => slug === 'd';
+
+eq('senza voto aspetta in Valuta', phaseOf(daValutare), 'triage');
+eq('col voto passa ad Analizza', phaseOf(passato), 'deep');
+eq('sotto 3 resta in Valuta, dove l\'hai visto bocciare', phaseOf(bocciato), 'triage');
+eq('analizzato passa a Documenti', phaseOf(letto, haLAnalisi), 'packs');
+eq('coi documenti pronti passa a Compila', phaseOf(conPacco, haLAnalisi), 'form');
+eq('form già aperto resta in Compila', phaseOf({ slug: 'f', score: '4', pack: 'pending', apply: 'opened' }), 'form');
+eq('il lavoro fatto batte il voto: un annuncio analizzato non torna a Valuta',
+  phaseOf({ slug: 'd', score: '2', pack: 'pending', apply: 'queued' }, haLAnalisi), 'packs');
+
+const percorso = summarise([daValutare, passato, bocciato, letto, conPacco,
+  { slug: 'g', score: '4', pack: 'built', apply: 'skipped' },
+  { slug: 'h', score: '4', pack: 'built', apply: 'submitted' },
+], () => true, haLAnalisi);
+eq('ogni annuncio conta in una fase sola', percorso.byPhase,
+  { search: 0, triage: 2, deep: 1, packs: 1, form: 1 });
+eq('scartati e inviati escono dai conti',
+  Object.values(percorso.byPhase).reduce((a, b) => a + b, 0), 5);
+ok('la somma delle fasi non supera mai la coda',
+  Object.values(percorso.byPhase).reduce((a, b) => a + b, 0) <= percorso.total);
+
+// -- il lavoro su un annuncio solo --
+eq('Documenti su una riga sola non guarda la soglia, perché l\'hai scelta tu',
+  phaseById('packs').steps({ slug: 'acme-ai' })[0].args, ['build-packs.mjs', '--slug', 'acme-ai']);
+eq('senza riga prepara tutti quelli pronti',
+  phaseById('packs').steps({})[0].args, ['build-packs.mjs']);
+
+// -- la pagina --
+ok('l\'elenco mostra solo gli annunci della fase scelta', /r\.phase === id/.test(PAGE_CSS));
+ok('ogni riga porta il bottone della sua fase', /data-go="triage"/.test(PAGE_CSS)
+  && /data-go="deep"/.test(PAGE_CSS) && /data-go="packs"/.test(PAGE_CSS));
+ok('e il bottone della riga fa partire la fase su quel solo annuncio',
+  /askConfirm\(b\.dataset\.go, b\.dataset\.slug\)/.test(PAGE_CSS));
+ok('la rotaia conta le righe della fase, non una statistica vicina',
+  /byPhase\[id\]/.test(PAGE_CSS) && !/\$\{s\.readyToTriage\} da valutare/.test(PAGE_CSS));
+ok('la ricerca web è accesa di serie e si può spegnere',
+  /let cercaWeb = true;/.test(PAGE_CSS) && /career-ops-web'\) !== 'no'/.test(PAGE_CSS));
+// Non basta togliere la scritta: finché la pagina chiede l'elenco dei portali
+// c'è un blocco pronto a tornare. Qui si controlla che non lo chieda più.
+ok('la schermata Cerca non conta più le bacheche a chi non gliel\'ha chiesto',
+  !/bacheche<|bacheca<|\/api\/sources/.test(PAGE_CSS));
