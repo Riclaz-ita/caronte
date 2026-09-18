@@ -5,16 +5,14 @@ import { fail, pass, rmSync, ROOT, run } from './helpers.mjs';
 
 console.log('\nSkill project-root resolution (#3332)');
 
+// La canonica più le voci del registro: un elenco scritto a mano qui è una
+// seconda copia di SKILL_ENTRYPOINTS, e una seconda copia va a male appena una
+// CLI entra o esce.
+const { SKILL_ENTRYPOINTS } = await import('../scaffolder/bin/skill-entrypoints.mjs');
 const entrypoints = [
-  '.agents',
-  '.antigravitycli',
-  '.claude',
-  '.cursor',
-  '.grok',
-  '.kimi',
-  '.opencode',
-  '.qwen',
-].map(dir => join(dir, 'skills', 'career-ops', 'SKILL.md'));
+  join('.agents', 'skills', 'career-ops', 'SKILL.md'),
+  ...SKILL_ENTRYPOINTS.map((e) => e.path.split('/').join(sep)),
+];
 
 function findProjectRoot(skillPath) {
   let current = dirname(skillPath);

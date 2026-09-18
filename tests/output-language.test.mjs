@@ -37,7 +37,6 @@ check(directive.includes('explain them in fr when needed'), 'directive preserves
 const engines = [
   'ollama-eval.mjs',
   'openai-eval.mjs',
-  'gemini-eval.mjs',
   'openrouter-runner.mjs',
 ];
 for (const engine of engines) {
@@ -60,5 +59,3 @@ const openrouterPrompt = buildSystemPrompt('MODE', {
 });
 check(openrouterPrompt.includes(outputLanguageInstruction('ja')), 'OpenRouter system prompt contains the resolved language instruction');
 
-const gemini = readFileSync(join(ROOT, 'gemini-eval.mjs'), 'utf-8');
-check(!gemini.includes('in English, unless the JD is in another language'), 'Gemini no longer lets JD language override profile output');

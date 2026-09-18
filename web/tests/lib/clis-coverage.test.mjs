@@ -40,7 +40,12 @@ test("the fixtures this guard reads still look like themselves", () => {
   // If either file is refactored past these regexes, the checks below would
   // pass vacuously over empty sets. Fail loudly instead.
   assert.ok(knownBins(src).size >= 7, "KNOWN parsed as near-empty — has clis.ts changed shape?");
-  assert.ok(documentedHeadlessBins(md).size >= 5, "no headless rows parsed — has the docs table changed shape?");
+  // This fork documents ONE headless CLI (Claude Code): the other entry
+  // wrappers and skill dirs were removed because nothing here drives them.
+  // The guard below is unchanged in substance — every CLI the docs promise
+  // must be selectable in the web UI — but its denominator is now one, so the
+  // fixture check asserts the table still parses rather than a headcount.
+  assert.ok(documentedHeadlessBins(md).size >= 1, "no headless rows parsed — has the docs table changed shape?");
 });
 
 test("every documented headless CLI is selectable in the web UI", () => {

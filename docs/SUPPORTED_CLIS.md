@@ -1,16 +1,18 @@
 # Supported CLIs
 
-Career-ops is AI-agnostic and runs on several command-line agent tools. The core logic is shared via `AGENTS.md`, while CLI-specific nuances are handled through entry wrappers in the repository root.
+Upstream career-ops is AI-agnostic and runs on several command-line agent
+tools. **This fork runs on Claude Code only.** The entry wrappers, skill
+entrypoints and context files for the other CLIs were removed, along with the
+market language modes and the legacy Gemini API evaluator, because nothing here
+drives them and an entry file that names a CLI nobody uses is a promise the
+repository cannot keep.
 
 | CLI | Entry File | How to Invoke |
 | --- | --- | --- |
 | Claude Code | `CLAUDE.md` | Interactive: `claude` (then `/career-ops`). Headless/Batch: `claude -p "prompt"` |
-| Cursor | `AGENTS.md` | Interactive: open the project in Cursor and ask for `career-ops` (skill entrypoint at `.cursor/skills/career-ops/SKILL.md`) |
-| Codex | `CODEX.md` (see [`docs/CODEX.md`](CODEX.md)) | Interactive: `codex` (then use plain text). Headless/Batch: `codex exec "prompt"` |
-| OpenCode | `OPENCODE.md` | Interactive: `opencode` (then `/career-ops`). Headless/Batch: `opencode run "prompt"` |
-| Antigravity CLI | `AGENTS.md` | Interactive: `agy` (then `/career-ops`). Headless/Batch: `agy -p "prompt"` |
-| Grok Build CLI | `AGENTS.md` | Interactive: `grok` (then `/career-ops`). Headless/Batch: `grok -p "prompt"` |
-| Qwen | `AGENTS.md` | Interactive: `qwen`. Headless/Batch: `qwen -p "prompt"` |
-| Kimi | `KIMI.md` | Interactive: `kimi` |
-| GitHub Copilot CLI | `AGENTS.md` | Headless/Batch: `copilot -p "prompt"` |
-| Gemini | `GEMINI.md` | Legacy wrapper redirecting to `AGENTS.md` (transitioned to Antigravity CLI). |
+
+The core logic is shared via `AGENTS.md` and is not Claude-specific: adding a
+CLI back means restoring its entry wrapper, adding one row to
+`SKILL_ENTRYPOINTS` in `scaffolder/bin/skill-entrypoints.mjs`, and listing its
+paths in `SYSTEM_PATHS` in `update-system.mjs`. Upstream still ships all of
+them, so `git merge upstream/main` will offer the deleted files back.

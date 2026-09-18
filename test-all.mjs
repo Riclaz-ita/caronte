@@ -1696,18 +1696,12 @@ console.log('\n5. Data contract validation');
 
 // Check system files exist
 const systemFiles = [
-  'CLAUDE.md', 'CODEX.md', 'OPENCODE.md', 'VERSION', 'DATA_CONTRACT.md', 'docs/CODEX.md',
+  'CLAUDE.md', 'VERSION', 'DATA_CONTRACT.md',
   'modes/_shared.md', 'modes/_profile.template.md',
   'modes/oferta.md', 'modes/pdf.md', 'modes/scan.md',
   'modes/heuristics/recruiter-side.md',
   'templates/states.yml', 'templates/cv-template.html',
   '.claude/skills/career-ops/SKILL.md',
-  '.cursor/skills/career-ops/SKILL.md',
-  '.opencode/skills/career-ops/SKILL.md',
-  '.qwen/skills/career-ops/SKILL.md',
-  '.antigravitycli/skills/career-ops/SKILL.md',
-  '.grok/skills/career-ops/SKILL.md',
-  '.kimi/skills/career-ops/SKILL.md',
 ];
 
 for (const f of systemFiles) {
@@ -2304,10 +2298,10 @@ if (
   fail('update-system does not rebuild dashboard binary after dashboard Go source updates');
 }
 
-if (updateSystemScript.includes("'CODEX.md'")) {
-  pass('update-system preserves CODEX.md as a system-layer wrapper');
+if (updateSystemScript.includes("'CLAUDE.md'")) {
+  pass('update-system preserves CLAUDE.md as a system-layer wrapper');
 } else {
-  fail('update-system does not preserve CODEX.md');
+  fail('update-system does not preserve CLAUDE.md');
 }
 
 try {
@@ -3996,36 +3990,10 @@ if (
   fail('_shared.md missing canonical company-type compensation reliability framework');
 }
 
-const zhShared = readFile('modes/zh/_shared.md');
-const zhOferta = readFile('modes/zh/oferta.md');
-if (
-  zhShared.includes('## 公司类型与薪资可信度') &&
-  zhShared.includes('成长期创业公司 / 已融资创业公司') &&
-  zhShared.includes('早期初创企业 / 未盈利创业公司') &&
-  zhShared.includes('开源社区 / 教育社区') &&
-  zhShared.includes('实际合同主体 / 用工主体') &&
-  zhShared.includes('薪资可信度默认使用保守的正式等级：`低`') &&
-  zhShared.includes('薪资分析压缩为两行：公司类型和薪资可信度') &&
-  zhShared.includes('浮动 / 条件性现金组成') &&
-  zhOferta.includes('公司类型分类（必填）') &&
-  zhOferta.includes('薪资可信度（必填）') &&
-  zhOferta.includes('没有任何公开薪资数字，也没有“综合薪资”“底薪+提成”“含绩效”“含全勤”“最高可达”等模糊补偿表述') &&
-  zhOferta.includes('JD 未提供薪资 / 补偿信息；跳过薪资组成拆分、详细市场数据表和 HR 核验问题') &&
-  zhOferta.includes('出现“综合薪资”“底薪+提成”“含绩效”“含全勤”“最高可达”“上不封顶”等模糊补偿表述时，进入完整薪资可信度路径') &&
-  zhOferta.includes('公开薪资区间') &&
-  zhOferta.includes('可能的合同固定 base') &&
-  zhOferta.includes('浮动 / 条件性现金组成') &&
-  zhOferta.includes('非现金福利') &&
-  zhOferta.includes('当 JD 明确写出薪资数字，或出现模糊补偿表述时，必须给出 3-6 个 HR 核验问题') &&
-  zhOferta.includes('不要把招聘广告薪资当作真实到手')
-) {
-  pass('Chinese modes include company-type compensation reliability checks');
-} else {
-  fail('Chinese modes missing company-type compensation reliability checks');
-}
-
 // ── Localized oferta.md structural parity (#3669) ──
-// Six localized oferta.md files were frozen at a pre-Block-G shape: no Block G,
+// Questa copia spedisce un mercato solo, l'italiano: le altre traduzioni sono
+// state tolte. Il patto resta lo stesso per quella che c'è.
+// Storicamente: sei traduzioni erano ferme a una forma pre-Block-G — no Block G,
 // no Risk Summary, and `## G)` meaning the draft-answers block that is `## H)`
 // in the canonical. A locale WITHOUT an oferta.md falls back to the canonical
 // and gets all of it, so a stale translation is worse than none. This pins the
@@ -4037,7 +4005,7 @@ if (
 // loudly otherwise), so the list can only shrink. Denominator asserted: the
 // locale walk must find the known files, or the whole check is blind.
 {
-  const FROZEN_OFERTA = new Set(['da', 'es', 'pl', 'pt', 'ua']);
+  const FROZEN_OFERTA = new Set();
   const REQUIRED_HEADINGS = ['## A)', '## B)', '## C)', '## D)', '## E)', '## F)', '## G)', '## Risk Summary', '## H)'];
   const REQUIRED_LABELS = ['**Date:**', '**URL:**', '**Archetype:**', '**Score:**', '**Legitimacy:**', '**PDF:**'];
   const withOferta = readdirSync(join(ROOT, 'modes'), { withFileTypes: true })
@@ -4049,8 +4017,11 @@ if (
     if (gaps.length === 0 && !(g < rs && rs < h)) gaps.push('order G) → Risk Summary → H)');
     return gaps;
   };
-  if (withOferta.length < 8 || !withOferta.includes('zh') || !withOferta.includes('ru')) {
-    fail(`localized oferta.md walk found ${withOferta.length} files (${withOferta.join(', ')}) — expected ≥8 incl. zh and ru; the parity check would be blind`);
+  if (withOferta.length === 0) {
+    // Nessuna traduzione di oferta.md in questa copia: il patto non ha niente
+    // su cui valere. Resta armato, così una traduzione aggiunta domani ci
+    // ricasca dentro invece di entrare senza controlli.
+    pass('nessun oferta.md tradotto da verificare: il controllo di parità resta armato per quando ce ne sarà uno');
   } else {
     const canonicalGaps = structuralGaps(readFile('modes/oferta.md'));
     const stillFrozen = [], resynced = [], drifted = [];
@@ -6249,7 +6220,7 @@ for (const section of requiredSections) {
 
 console.log('\n11. CLI wrapper file integrity');
 
-const cliWrappers = ['CLAUDE.md', 'CODEX.md', 'OPENCODE.md'];
+const cliWrappers = ['CLAUDE.md'];
 for (const f of cliWrappers) {
   if (!fileExists(f)) {
     fail(`Missing CLI wrapper: ${f}`);
@@ -6262,36 +6233,6 @@ for (const f of cliWrappers) {
     fail(`${f} does NOT reference AGENTS.md`);
   }
 }
-if (!fileExists('GEMINI.md')) {
-  fail('Missing legacy Gemini context guard: GEMINI.md');
-} else {
-  const geminiContext = readFile('GEMINI.md');
-  if (/^@(?:\.\/)?AGENTS\.md/m.test(geminiContext)) {
-    fail('GEMINI.md imports AGENTS.md and duplicates Antigravity context');
-  } else {
-    pass('GEMINI.md is a no-op context guard for Antigravity');
-  }
-}
-
-const codexWrapper = fileExists('CODEX.md') ? readFile('CODEX.md') : '';
-if (/^@(?:\.\/)?AGENTS\.md/m.test(codexWrapper)) {
-  pass('CODEX.md imports AGENTS.md as a thin wrapper');
-} else {
-  fail('CODEX.md is not a thin AGENTS.md wrapper');
-}
-
-const codexGuideDoc = fileExists('docs/CODEX.md') ? readFile('docs/CODEX.md') : '';
-if (
-  /AGENTS\.md/.test(codexGuideDoc) &&
-  /CODEX\.md/.test(codexGuideDoc) &&
-  /codex exec/.test(codexGuideDoc) &&
-  /Codex/i.test(codexGuideDoc)
-) {
-  pass('docs/CODEX.md is a complete Codex guide');
-} else {
-  fail('docs/CODEX.md is missing required content');
-}
-
 const claudeWrapperLines = readFile('CLAUDE.md').trim().split(/\r?\n/);
 const claudeWrapperBody = claudeWrapperLines.slice(1).filter(line => line.trim());
 if (
@@ -6307,7 +6248,9 @@ if (
 const criticalRoutingContracts = [
   ['paste-a-JD auto-pipeline', /Pastes JD or URL\s*\|\s*auto-pipeline/],
   ['PDF mode', /generate CV\/PDF\s*\|\s*`pdf`/i],
-  ['language modes_dir override', /language\.modes_dir:\s*modes\/(?:\{lang\}|de)/],
+  // Qualunque mercato, non uno a nome: il patto è che AGENTS.md spieghi
+  // l'override, non che la copia spedisca proprio il tedesco.
+  ['language modes_dir override', /language\.modes_dir:\s*modes\/[\w{}-]+/],
   ['doctor --json onboarding', /node doctor\.mjs --json/],
 ];
 for (const [name, marker] of criticalRoutingContracts) {
@@ -6328,11 +6271,6 @@ console.log('\n12. Skill symlink integrity');
 const canonicalSkill = '.agents/skills/career-ops/SKILL.md';
 const symlinks = [
   '.claude/skills/career-ops/SKILL.md',
-  '.cursor/skills/career-ops/SKILL.md',
-  '.opencode/skills/career-ops/SKILL.md',
-  '.qwen/skills/career-ops/SKILL.md',
-  '.antigravitycli/skills/career-ops/SKILL.md',
-  '.grok/skills/career-ops/SKILL.md',
 ];
 
 let canonicalReal = null;
@@ -6371,55 +6309,6 @@ for (const link of symlinks) {
   }
 }
 
-if (
-  /Codex/i.test(canonicalContent ?? '') &&
-  /`codex`/.test(canonicalContent ?? '') &&
-  /`codex exec/.test(canonicalContent ?? '') &&
-  /prompt/i.test(canonicalContent ?? '') &&
-  /\/career-ops/.test(canonicalContent ?? '')
-) {
-  pass('career-ops skill router documents the Codex invocation model');
-} else {
-  fail('career-ops skill router is missing Codex invocation guidance');
-}
-
-console.log('\n12c. Codex documentation guidance');
-
-const readmeDoc = readFile('README.md');
-if (
-  /CODEX\.md/.test(readmeDoc) &&
-  /codex exec/.test(readmeDoc) &&
-  /Codex/i.test(readmeDoc) &&
-  /(slash commands?.*not guaranteed|plain language|prompt)/i.test(readmeDoc)
-) {
-  pass('README documents CODEX.md and Codex interactive/headless usage');
-} else {
-  fail('README is missing required Codex usage guidance');
-}
-
-const setupDoc = readFile('docs/SETUP.md');
-if (
-  /codex exec/.test(setupDoc) &&
-  /Codex/i.test(setupDoc) &&
-  /(slash commands?.*not guaranteed|plain language|prompt)/i.test(setupDoc)
-) {
-  pass('docs/SETUP.md explains the Codex invocation model');
-} else {
-  fail('docs/SETUP.md is missing Codex invocation guidance');
-}
-
-const agentsDoc = readFile('AGENTS.md');
-if (
-  /CODEX\.md/.test(agentsDoc) &&
-  /codex exec/.test(agentsDoc) &&
-  /Codex/i.test(agentsDoc) &&
-  /(slash commands?.*not guaranteed|prompt|\/career-ops.*unavailable)/i.test(agentsDoc)
-) {
-  pass('AGENTS.md includes CODEX.md and Codex-specific command guidance');
-} else {
-  fail('AGENTS.md is missing CODEX.md or Codex command guidance');
-}
-
 console.log('\n12a. Skill entrypoint materialization');
 
 {
@@ -6427,23 +6316,20 @@ console.log('\n12a. Skill entrypoint materialization');
   try {
     const canonicalDir = join(fixtureRoot, '.agents', 'skills', 'career-ops');
     const claudeDir = join(fixtureRoot, '.claude', 'skills', 'career-ops');
-    const opencodeDir = join(fixtureRoot, '.opencode', 'skills', 'career-ops');
     mkdirSync(canonicalDir, { recursive: true });
     mkdirSync(claudeDir, { recursive: true });
-    mkdirSync(opencodeDir, { recursive: true });
 
     const fixtureSkill = '---\nname: career-ops\n---\n\n# canonical skill\n';
     const pointer = '../../../.agents/skills/career-ops/SKILL.md';
     writeFileSync(join(canonicalDir, 'SKILL.md'), fixtureSkill);
     writeFileSync(join(claudeDir, 'SKILL.md'), pointer);
-    writeFileSync(join(opencodeDir, 'SKILL.md'), pointer);
 
+    // La tabella dei punti d'ingresso ha una voce sola da quando questa copia
+    // gira sul solo Claude Code: la prova la legge invece di ripeterla a mano,
+    // così riaggiungerne una non la fa fallire per il motivo sbagliato.
     const skills = await import(pathToFileURL(join(ROOT, 'scaffolder/bin/skill-entrypoints.mjs')).href);
     const materialized = skills.materializeSkillEntrypoints(fixtureRoot).sort();
-    const expected = [
-      '.claude/skills/career-ops/SKILL.md',
-      '.opencode/skills/career-ops/SKILL.md',
-    ];
+    const expected = ['.claude/skills/career-ops/SKILL.md'];
 
     if (JSON.stringify(materialized) === JSON.stringify(expected)) {
       pass('update-system materializes pointer skill entrypoints');
@@ -6452,8 +6338,7 @@ console.log('\n12a. Skill entrypoint materialization');
     }
 
     const claudeSkill = readFileSync(join(claudeDir, 'SKILL.md'), 'utf-8');
-    const opencodeSkill = readFileSync(join(opencodeDir, 'SKILL.md'), 'utf-8');
-    if (claudeSkill === fixtureSkill && opencodeSkill === fixtureSkill) {
+    if (claudeSkill === fixtureSkill) {
       pass('materialized skill entrypoints match canonical content');
     } else {
       fail('materialized skill entrypoints do not match canonical content');
@@ -6535,9 +6420,11 @@ console.log('\n12b. Skill entrypoint bootstrap (npx / old releases)');
       fail(`unexpected bootstrapped skill entrypoints: ${JSON.stringify(touched)}`);
     }
 
-    const grokSkill = readFileSync(join(fixtureRoot, '.grok', 'skills', 'career-ops', 'SKILL.md'), 'utf-8');
-    const claudeSkill = readFileSync(join(claudeDir, 'SKILL.md'), 'utf-8');
-    if (grokSkill === fixtureSkill && claudeSkill === fixtureSkill) {
+    // Come sopra: il contenuto si verifica su ogni voce del registro, non su
+    // una CLI nominata a mano che domani potrebbe non esserci.
+    const tutti = skills.SKILL_ENTRYPOINTS
+      .map((e) => readFileSync(join(fixtureRoot, ...e.path.split('/')), 'utf-8'));
+    if (tutti.every((t) => t === fixtureSkill)) {
       pass('ensureSkillEntrypoints materializes canonical skill content');
     } else {
       fail('bootstrapped skill entrypoints do not match canonical content');
@@ -6649,22 +6536,20 @@ console.log('\n12b. Skill entrypoint bootstrap (npx / old releases)');
   try {
     const canonicalDir = join(fixtureRoot, '.agents', 'skills', 'career-ops');
     const claudeDir = join(fixtureRoot, '.claude', 'skills', 'career-ops');
-    const opencodeDir = join(fixtureRoot, '.opencode', 'skills', 'career-ops');
     mkdirSync(canonicalDir, { recursive: true });
     mkdirSync(claudeDir, { recursive: true });
-    mkdirSync(opencodeDir, { recursive: true });
 
     const fixtureSkill = '---\nname: career-ops\n---\n\n# canonical skill\n';
-    const pointer = '../../../.agents/skills/career-ops/SKILL.md';
     writeFileSync(join(canonicalDir, 'SKILL.md'), fixtureSkill);
+    // Dove ci si aspetta un file c'è una cartella: non deve schiantare né
+    // provare a scriverci sopra. Che i puntatori buoni vengano materializzati
+    // lo prova già 12a, quindi qui resta la sola metà che conta.
     mkdirSync(join(claudeDir, 'SKILL.md'));
-    writeFileSync(join(opencodeDir, 'SKILL.md'), pointer);
 
     const skills = await import(pathToFileURL(join(ROOT, 'scaffolder/bin/skill-entrypoints.mjs')).href);
     const materialized = skills.materializeSkillEntrypoints(fixtureRoot);
-    const opencodeSkill = readFileSync(join(opencodeDir, 'SKILL.md'), 'utf-8');
-    if (JSON.stringify(materialized) === JSON.stringify(['.opencode/skills/career-ops/SKILL.md']) && opencodeSkill === fixtureSkill) {
-      pass('update-system skips non-file skill entrypoints while materializing valid pointers');
+    if (JSON.stringify(materialized) === JSON.stringify([])) {
+      pass('update-system skips non-file skill entrypoints instead of crashing or clobbering them');
     } else {
       fail(`non-file skill entrypoint handling was unexpected: ${JSON.stringify(materialized)}`);
     }
@@ -6721,10 +6606,8 @@ console.log('\n12c. Materialized skill index mode');
   try {
     const canonicalDir = join(fixtureRoot, '.agents', 'skills', 'career-ops');
     const claudeDir = join(fixtureRoot, '.claude', 'skills', 'career-ops');
-    const opencodeDir = join(fixtureRoot, '.opencode', 'skills', 'career-ops');
     mkdirSync(canonicalDir, { recursive: true });
     mkdirSync(claudeDir, { recursive: true });
-    mkdirSync(opencodeDir, { recursive: true });
 
     const fixtureSkill = '---\nname: career-ops\n---\n\n# canonical skill\n';
     const pointer = '../../../.agents/skills/career-ops/SKILL.md';
@@ -6750,7 +6633,6 @@ console.log('\n12c. Materialized skill index mode');
 
     writeFileSync(join(canonicalDir, 'SKILL.md'), fixtureSkill);
     writeFileSync(join(claudeDir, 'SKILL.md'), pointer);
-    writeFileSync(join(opencodeDir, 'SKILL.md'), pointer);
     // Guard the isolation itself, as a first-class assertion. If the pin above
     // ever stops taking effect the fixture cannot stage its own input, and every
     // assertion below collapses into a single "crashed" carrying git's ignore
@@ -6782,25 +6664,22 @@ console.log('\n12c. Materialized skill index mode');
 
     const pointerBlob = gitRun(['hash-object', '-w', '--stdin'], { input: pointer });
     gitRun(['update-index', '--add', '--cacheinfo', `120000,${pointerBlob},.claude/skills/career-ops/SKILL.md`]);
-    gitRun(['update-index', '--add', '--cacheinfo', `120000,${pointerBlob},.opencode/skills/career-ops/SKILL.md`]);
 
     const updater = await import(pathToFileURL(join(ROOT, 'update-system.mjs')).href);
     const skills = await import(pathToFileURL(join(ROOT, 'scaffolder/bin/skill-entrypoints.mjs')).href);
     const materialized = skills.materializeSkillEntrypoints(fixtureRoot);
     updater.prepareMaterializedSkillEntrypointsForStage(materialized, fixtureRoot);
-    gitRun(['add', '--', '.claude/skills/', '.opencode/skills/']);
+    gitRun(['add', '--', '.claude/skills/']);
 
     const claudeIndex = gitRun(['ls-files', '-s', '--', '.claude/skills/career-ops/SKILL.md']);
-    const opencodeIndex = gitRun(['ls-files', '-s', '--', '.opencode/skills/career-ops/SKILL.md']);
-    if (claudeIndex.startsWith('100644 ') && opencodeIndex.startsWith('100644 ')) {
+    if (claudeIndex.startsWith('100644 ')) {
       pass('materialized skill entrypoints stage as regular files, not symlink blobs');
     } else {
-      fail(`materialized skill entrypoints staged with wrong modes: ${JSON.stringify([claudeIndex, opencodeIndex])}`);
+      fail(`materialized skill entrypoints staged with wrong modes: ${JSON.stringify([claudeIndex])}`);
     }
 
     const claudeBlob = gitRaw(['show', ':.claude/skills/career-ops/SKILL.md']);
-    const opencodeBlob = gitRaw(['show', ':.opencode/skills/career-ops/SKILL.md']);
-    if (claudeBlob === fixtureSkill && opencodeBlob === fixtureSkill) {
+    if (claudeBlob === fixtureSkill) {
       pass('materialized skill blobs contain canonical skill content');
     } else {
       fail('materialized skill blobs do not contain canonical skill content');
@@ -9811,7 +9690,7 @@ try {
   }
   rmSync(unsafeRangeTmp, { recursive: true, force: true });
 
-  const evaluatorSources = ['ollama-eval.mjs', 'openai-eval.mjs', 'gemini-eval.mjs', 'openrouter-runner.mjs']
+  const evaluatorSources = ['ollama-eval.mjs', 'openai-eval.mjs', 'openrouter-runner.mjs']
     .map(name => [name, readFile(name)]);
   const unmigratedEvaluators = evaluatorSources
     .filter(([, source]) => !/reservedNumbers\s*=\s*await\s+reserveReportNumbers\s*\(/.test(source)
@@ -14588,27 +14467,6 @@ try {
   fail(`openai-eval prompt-cache source test crashed: ${e.message}`);
 }
 
-// ── 44d. gemini-eval — static prefix as systemInstruction (#1709) ────
-// Gemini has no cache_control field; its implicit prefix caching keys on a
-// stable systemInstruction, so the static context must sit there — not inline in
-// contents. Source-level, since gemini-eval runs on import.
-console.log('\n44d. gemini-eval — static prefix as systemInstruction (#1709)');
-try {
-  const src = readFileSync(join(ROOT, 'gemini-eval.mjs'), 'utf-8');
-  const usesSystemInstruction = /getGenerativeModel\(\{[\s\S]*?systemInstruction:\s*systemPrompt/.test(src);
-  // the per-request call must NOT re-embed the full systemPrompt inline (that
-  // would defeat stable-prefix caching and duplicate the context)
-  const noInlinePrefix = !/generateContent\(\[[\s\S]*?\{\s*text:\s*systemPrompt\s*\}/.test(src);
-  const carriesJdTurn = /generateContent\(`JOB DESCRIPTION TO EVALUATE/.test(src);
-  if (usesSystemInstruction && noInlinePrefix && carriesJdTurn) {
-    pass('gemini-eval moves the static prefix to systemInstruction and sends only the JD turn (#1709)');
-  } else {
-    fail(`gemini-eval systemInstruction wiring: sys=${usesSystemInstruction} noInline=${noInlinePrefix} jd=${carriesJdTurn}`);
-  }
-} catch (e) {
-  fail(`gemini-eval systemInstruction source test crashed: ${e.message}`);
-}
-
 // ── 44f. openai-tailor — host-gated prompt-cache breakpoint (#1709, #2432) ──
 // openai-tailor.mjs runs on import (arg parse + fetch), so it can't be imported
 // to unit-test the helper — assert the host-gated shape at the source level,
@@ -18419,82 +18277,6 @@ try {
   }
 } catch (e) {
   fail(`funding manifest integrity check: ${e.message}`);
-}
-
-console.log('\n73. Gemini evaluator and encoding');
-
-let geminiTmp = null;
-try {
-  geminiTmp = mkdtempSync(join(ROOT, 'co-gemini-'));
-  const configDir = join(geminiTmp, 'config');
-  const modesDir = join(geminiTmp, 'modes', 'tr');
-  mkdirSync(configDir, { recursive: true });
-  mkdirSync(modesDir, { recursive: true });
-
-  // 1. Create a profile.yml setting modes_dir to modes/tr
-  writeFileSync(
-    join(configDir, 'profile.yml'),
-    '\uFEFFlanguage:\n  modes_dir: modes/tr\n', // Starts with a UTF-8 BOM
-    'utf-8'
-  );
-
-  // 2. Create localized dummy files in modes/tr/
-  // is-ilani.md contains Turkish/Czech characters: Türkiye, Čeština
-  writeFileSync(join(modesDir, '_shared.md'), 'Shared Turkish context', 'utf-8');
-  writeFileSync(join(modesDir, 'is-ilani.md'), 'Türkiye Čeština logic', 'utf-8');
-
-  // 3. Create other required files
-  writeFileSync(join(geminiTmp, 'cv.md'), 'My CV', 'utf-8');
-  mkdirSync(join(geminiTmp, 'modes'), { recursive: true });
-  writeFileSync(join(geminiTmp, 'modes', '_profile.md'), 'My Profile', 'utf-8');
-
-  // 4. Create a mock job description file with a BOM and UTF-8 characters
-  const jdPath = join(geminiTmp, 'mock-jd.txt');
-  writeFileSync(jdPath, '\uFEFFJob in Türkiye Čeština with BOM', 'utf-8');
-
-  // Run ROOT/gemini-eval.mjs directly with cwd: geminiTmp.
-  let stdout = '';
-  let stderr = '';
-  try {
-    stdout = execFileSync(NODE, [join(ROOT, 'gemini-eval.mjs'), '--file', jdPath, '--no-save'], {
-      cwd: geminiTmp,
-      env: {
-        ...process.env,
-        GEMINI_API_KEY: 'mock-api-key-12345'
-      },
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 30000
-    });
-  } catch (err) {
-    stdout = err.stdout || '';
-    stderr = err.stderr || '';
-  }
-
-  // Assertions:
-  if (stdout.includes('Loading context files...')) {
-    pass('Gemini evaluator loads files phase started');
-  } else {
-    fail('Gemini evaluator failed to start file loading phase');
-  }
-
-  if (stdout.includes('modes/tr/_shared.md not found') || stdout.includes('modes/tr/is-ilani.md not found')) {
-    fail('Gemini evaluator failed to resolve custom modes directory or filenames');
-  } else {
-    pass('Gemini evaluator resolved custom modes directory (modes/tr/) and localized filenames (is-ilani.md)');
-  }
-
-  if (stderr.includes('API_KEY') || stderr.includes('API key')) {
-    pass('Gemini evaluator reached API phase with mock key');
-  } else {
-    fail(`Gemini evaluator failed before reaching API phase or crashed: ${stderr}`);
-  }
-} catch (e) {
-  fail(`Gemini evaluator test crashed: ${e.message}`);
-} finally {
-  if (geminiTmp && existsSync(geminiTmp)) {
-    rmSync(geminiTmp, { recursive: true, force: true });
-  }
 }
 
 console.log('\n74. gmail: isCleanUrl() drops page assets');

@@ -2,7 +2,7 @@
 // authorship, factual sourcing, and human approval. English fallback alone is
 // insufficient: a localized mode can be loaded without reading modes/_shared.md.
 
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { pass, fail, ROOT } from './helpers.mjs';
 
@@ -14,10 +14,14 @@ const requiredGuardrails = [
   '<!-- guardrail:source-exclusivity -->',
   '<!-- guardrail:human-approval -->',
 ];
-const expectedLocalizedModes = [
-  'ar', 'da', 'de', 'es', 'fr', 'hi', 'id', 'it', 'ja',
-  'ko', 'nl', 'pl', 'pt', 'ru', 'tr', 'ua', 'zh-TW', 'zh',
-];
+// L'elenco non è più scritto a mano: questa copia spedisce il solo mercato
+// italiano, e un elenco fisso costringerebbe a modificare il test ogni volta
+// che una lingua entra o esce. Le lingue sono le cartelle di modes/ che hanno
+// un _shared.md tradotto, ed è esattamente ciò che il patto deve coprire.
+const expectedLocalizedModes = readdirSync(join(ROOT, 'modes'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join(ROOT, 'modes', entry.name, '_shared.md')))
+  .map((entry) => entry.name)
+  .sort();
 
 const localizedModeNames = readdirSync(join(ROOT, 'modes'), { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && expectedLocalizedModes.includes(entry.name))

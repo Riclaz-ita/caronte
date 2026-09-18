@@ -26,7 +26,6 @@ These files contain your personal data, customizations, and work product. Update
 | `data/intake-state.json` | Fingerprints of already-ingested intake sources (written by `node intake.mjs --commit`; makes re-runs propose only new material — safe to delete, next intake re-proposes everything) |
 | `portals.yml` | Your customized company list |
 | `config/plugins.yml` | Your plugin activation toggles (opt-in; seeded from `config/plugins.example.yml`) |
-| `opencode.json` | Your OpenCode project config (MCP servers, model, formatter, LSP) — gitignored, copy `opencode.example.json` to start |
 | `plugins.local/` | Your own / private plugins (never auto-updated) |
 | `plugins.lock` | Integrity pins + recorded consent for your enabled plugins (generated; never auto-updated) |
 | `data/applications.md` | Your application tracker (source of truth) |
@@ -140,10 +139,6 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `modes/zh/*` | Chinese language modes |
 | `modes/heuristics/*` | Shared candidate-facing application heuristics |
 | `CLAUDE.md` | Agent instructions (Claude Code) |
-| `OPENCODE.md` | Agent instructions (OpenCode) |
-| `CODEX.md` | Agent instructions (Codex) |
-| `KIMI.md` | Agent instructions (Kimi CLI) |
-| `GEMINI.md` | Legacy no-op context guard (prevents Antigravity duplicate imports) |
 | `AGENTS.md` | Canonical agent instructions (imported by CLI-specific wrappers) |
 | `*.mjs` | Utility scripts |
 | `providers/` | Job-source provider modules for the zero-token scanner |
@@ -152,18 +147,12 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `plugins-registry/` | Curated community plugins, one `<id>.json` per plugin (the trust root) |
 | `plugin-install.mjs` / `plugin-audit.mjs` / `validate-plugin-registry.mjs` | Plugin install/audit/registry-validation utilities |
 | `config/plugins.example.yml` | Plugin activation template (seed for `config/plugins.yml`) |
-| `opencode.example.json` | OpenCode project config template (seed for `opencode.json`; ships Playwright MCP registration) |
 | `batch/batch-prompt.md` | Batch worker prompt |
 | `batch/batch-runner.sh` | Batch orchestrator |
 | `dashboard/*` | Go TUI dashboard |
 | `templates/*` | Base templates |
 | `fonts/*` | Self-hosted fonts |
 | `.claude/skills/*` | Skill definitions (Claude Code) |
-| `.cursor/skills/*` | Skill definitions (Cursor) |
-| `.opencode/skills/*` | Skill definitions (OpenCode) |
-| `.qwen/skills/*` | Skill definitions (Qwen Code) |
-| `.antigravitycli/skills/*` | Skill definitions (Antigravity CLI) |
-| `.grok/skills/*` | Skill definitions (Grok Build CLI) |
 | `docs/*` | Documentation |
 | `VERSION` | Current version number |
 | `DATA_CONTRACT.md` | This file |

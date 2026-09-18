@@ -91,13 +91,7 @@ If yes → `node update-system.mjs apply --confirm`. If no → `node update-syst
 
 ## What is career-ops
 
-AI-powered, CLI-agnostic job search automation: pipeline tracking, offer evaluation, CV generation, portal scanning, batch processing. Runs on any AI coding CLI following the [open agent skill standard](https://agentskills.io) (Claude Code, Cursor, Codex, OpenCode, Qwen, Copilot, Kimi, Antigravity CLI, Grok Build CLI). Legacy Gemini API evaluation remains via `gemini-eval.mjs`.
-
-### Codex invocation
-
-- **Interactive:** run `codex` in the repo root; if `/career-ops` is unavailable, ask Codex to run the mode directly.
-- **Headless:** `codex exec "prompt"` for one-shot workers.
-- **Examples:** `Run career-ops scan mode`, `Run career-ops pipeline mode for data/pipeline.md`, `Run career-ops pdf mode`, `Run career-ops tracker mode`, `Evaluate this JD with career-ops auto-pipeline: https://company.com/jobs/123`
+AI-powered job search automation: pipeline tracking, offer evaluation, CV generation, portal scanning, batch processing. Upstream career-ops runs on any AI coding CLI following the [open agent skill standard](https://agentskills.io); this fork is trimmed to **Claude Code**, the only CLI it is driven from, and the entrypoints, context wrappers and market modes for the others were removed.
 
 ### Main Files
 
@@ -181,9 +175,9 @@ Output: `{"onboardingNeeded": <bool>, "missing": [...], "unpersonalized": [...],
 #### Step 0: Free Tier Check
 
 Only if the user mentions cost, pricing, budget, or free alternatives:
-> "career-ops works fully on Antigravity CLI's free tier — no API key or paid subscription needed. See [FREE_TIER.md](docs/FREE_TIER.md) for setup, daily limits, and batch tips."
+> "career-ops runs on the Claude Code subscription you already have: no API key and no per-evaluation billing to set up."
 
-If the user is already on a paid plan (Claude Max, Google AI, etc.) or does not mention cost, skip this step silently.
+If the user does not mention cost, skip this step silently.
 
 #### Step 1: CV (required)
 If `cv.md` is missing, ask:
@@ -247,8 +241,8 @@ Store insights in `config/profile.yml` (narrative), `modes/_profile.md`, or `art
 Once all files exist, confirm:
 > "You're all set! You can now:
 > - Paste a job URL to evaluate it
-> - Run the scan entrypoint for your CLI to search portals: `/career-ops scan`, `/career-ops-scan`, or ask Codex to run `scan`
-> - Open the command menu for your CLI: `/career-ops`, the CLI-specific alias, or ask Codex to show the available career-ops modes
+> - Run `/career-ops scan` to search portals
+> - Open the command menu with `/career-ops`
 >
 > Everything is customizable — just ask me to change anything.
 >
@@ -257,7 +251,7 @@ Once all files exist, confirm:
 Then suggest automation:
 > "Want me to scan for new offers automatically? I can set up a recurring scan every few days so you don't miss anything. Just say 'scan every 3 days' and I'll configure it."
 
-If the user accepts, use the `/loop` or `/schedule` skill (if available) to set up a recurring scan entrypoint for their CLI (`/career-ops scan`, `/career-ops-scan`, or the equivalent Codex prompt). If those aren't available, point them to [docs/AUTOMATION.md](docs/AUTOMATION.md) for copy-paste cron / launchd / Windows Task Scheduler recipes plus a zero-token triage-to-shortlist prompt, or remind them to run the scan mode periodically.
+If the user accepts, use the `/loop` or `/schedule` skill (if available) to set up a recurring `/career-ops scan`. If those aren't available, point them to [docs/AUTOMATION.md](docs/AUTOMATION.md) for copy-paste cron / launchd / Windows Task Scheduler recipes plus a zero-token triage-to-shortlist prompt, or remind them to run the scan mode periodically.
 
 ### Personalization
 
@@ -272,16 +266,15 @@ This system is designed to be customized by YOU (AI Agent). When the user asks, 
 
 ### Language Modes
 
-Default modes are in `modes/` (English). Market-specific mode sets (each includes `_shared.md`, an evaluation mode, an apply mode, and `pipeline.md`):
+Default modes are in `modes/` (English). Upstream ships eighteen market-specific
+mode sets; **this fork keeps only Italian**, the market it actually searches in.
+The others were removed rather than left to rot: a stale translation is worse
+than none, because a locale without its own mode falls back to the canonical
+English one and gets all of it.
 
 | Market | Dir | Evaluation / Apply | Local vocabulary (examples) |
 |--------|-----|--------------------|------------------------------|
-| German (DACH) | `modes/de/` | `angebot` / `bewerben` | 13. Monatsgehalt, Probezeit, Kündigungsfrist, AGG, Tarifvertrag |
-| French (FR/BE/CH/LU) | `modes/fr/` | `offre` / `postuler` | CDI/CDD, SYNTEC, RTT, 13e mois, titres-restaurant, CSE |
-| Arabic (Middle East) | `modes/ar/` | `fursah` / `takdeem` | مكافأة نهاية الخدمة, التأمينات الاجتماعية, فترة التجربة |
-| Japanese (Japan) | `modes/ja/` | `kyujin` / `oubo` | 正社員, 賞与, みなし残業, 年俸制, 36協定 |
-| Turkish (Turkey) | `modes/tr/` | `is-ilani` / `basvuru` | SGK, kıdem tazminatı, brüt/net maaş, BES |
-| Hindi (India) | `modes/hi/` | `naukri` / `aavedan` | CTC vs. in-hand, PF/EPF, Notice period/buyout, ESOPs |
+| Italian (Italy) | `modes/it/` | `annuncio` / `candidarsi` | RAL, CCNL, tempo indeterminato/determinato, apprendistato, TFR, periodo di prova |
 
 ### Output Language vs Market Modes
 
@@ -290,13 +283,13 @@ Default modes are in `modes/` (English). Market-specific mode sets (each include
 ```yaml
 language:
   output: en
-  modes_dir: modes/de
+  modes_dir: modes/it
 ```
 
 Two separate axes:
 
 - `language.output` controls **human-facing output**: reports, tracker notes, PDFs, cover letters, outreach, interview prep, form answers, any user-visible prose. Default: `en` when absent.
-- `language.modes_dir` controls **market vocabulary and local evaluation rules** (e.g. `modes/de` supplies DACH concepts like 13. Monatsgehalt).
+- `language.modes_dir` controls **market vocabulary and local evaluation rules** (e.g. `modes/it` supplies Italian concepts like RAL and CCNL).
 
 **Composition rule:** `language.output` is authoritative for prose; `modes_dir` only supplies market context. English output with DACH vocabulary, French output with Japan-market vocabulary — any combination is valid.
 
@@ -306,7 +299,7 @@ Two separate axes:
 
 **When to use a market mode set** (same rule for every market in the table above): the user is targeting job postings in that language or market, lives in that market, or explicitly asks for it. Any of these selects it:
 1. User says "use {market} modes" → read from that dir instead of `modes/`
-2. User sets `language.modes_dir: modes/de` (or their market's dir) in `config/profile.yml` → always use that dir
+2. User sets `language.modes_dir: modes/it` in `config/profile.yml` → always use that dir
 3. You detect a JD written in that language → *suggest* switching
 
 **When NOT to switch market modes:** If the user applies to English-language roles, even at companies from those markets, use the default English market modes — *unless* the user has explicitly requested another market mode in this conversation, or `language.modes_dir` is set in `config/profile.yml` (the explicit user preference always wins over JD-language detection). This does not override `language.output`; prose still follows `language.output`.
@@ -397,17 +390,7 @@ This project practices CareerOps (see `MANIFESTO.md`). When you finish helping a
 
 ## Headless / Batch Mode
 
-Headless worker command per CLI:
-
-| CLI | Command |
-|-----|---------|
-| Claude Code | `claude -p "prompt"` |
-| **OpenCode** | `opencode run "prompt"` |
-| Copilot CLI | `copilot -p "prompt"` |
-| Codex | `codex exec "prompt"` |
-| Qwen | `qwen -p "prompt"` |
-| Antigravity CLI | `agy -p "prompt"` |
-| Grok Build CLI | `grok -p "prompt"` |
+Headless worker command: `claude -p "prompt"`.
 
 **Parallel fan-outs — reserve report numbers first.** Before spawning N parallel evaluators, reserve the range: `node reserve-report-num.mjs --count N` (prints e.g. `042-049`); hand each worker its own number. The allocator treats report files, sentinels, tracker row IDs, and tracker report links as occupied; each slot claim is individually atomic (on collision, claimed slots are released and the reservation restarts past it — permanent, harmless gaps). Release with `node reserve-report-num.mjs --release 042-049` when done; stale sentinels are GC'd after 4h, so reserve right before spawning. Never let parallel workers compute `max+1` themselves — that is the #749 race.
 
